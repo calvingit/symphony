@@ -34,6 +34,11 @@ help with the setup:
 > Set up Symphony for my repository based on
 > https://github.com/openai/symphony/blob/main/elixir/README.md
 
+### TypeScript local development implementation
+
+A TypeScript implementation with a local Next.js Linear-compatible tracker lives under
+[`typescript/`](typescript/). It is intended for local development without a real Linear account.
+
 ---
 
 ## License
