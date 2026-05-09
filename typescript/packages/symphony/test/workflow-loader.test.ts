@@ -30,4 +30,14 @@ describe("loadWorkflow", () => {
     expect(workflow.config).toEqual({});
     expect(workflow.promptTemplate).toBe("Run issue {{ issue.identifier }}");
   });
+
+  it("rejects YAML front matter that parses to null", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "symphony-workflow-"));
+    const path = join(dir, "WORKFLOW.md");
+    await writeFile(path, "---\nnull\n---\nPrompt\n");
+
+    await expect(loadWorkflow(path)).rejects.toMatchObject({
+      code: "workflow_front_matter_not_a_map",
+    });
+  });
 });

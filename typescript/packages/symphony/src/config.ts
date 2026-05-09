@@ -15,12 +15,18 @@ export interface EffectiveConfig {
     projectSlug: string | undefined;
     activeStates: string[];
     terminalStates: string[];
-    pollingIntervalMs: number;
+  };
+  polling: {
+    intervalMs: number;
   };
   workspace: {
     root: string;
   };
   hooks: {
+    afterCreate: string | null;
+    beforeRun: string | null;
+    afterRun: string | null;
+    beforeRemove: string | null;
     timeoutMs: number;
   };
   agent: {
@@ -34,12 +40,16 @@ export interface EffectiveConfig {
     turnTimeoutMs: number;
     readTimeoutMs: number;
     stallTimeoutMs: number;
+    approvalPolicy: string | undefined;
+    threadSandbox: string | undefined;
+    turnSandboxPolicy: string | undefined;
   };
 }
 
 export function resolveConfig(raw: unknown, context: ResolveConfigContext): EffectiveConfig {
   const config = asRecord(raw) ?? {};
   const tracker = asRecord(config.tracker) ?? {};
+  const polling = asRecord(config.polling) ?? {};
   const workspace = asRecord(config.workspace) ?? {};
   const hooks = asRecord(config.hooks) ?? {};
   const agent = asRecord(config.agent) ?? {};
@@ -59,12 +69,18 @@ export function resolveConfig(raw: unknown, context: ResolveConfigContext): Effe
         "Duplicate",
         "Done",
       ],
-      pollingIntervalMs: readPositiveInteger(tracker.polling_interval_ms) ?? 30000,
+    },
+    polling: {
+      intervalMs: readPositiveInteger(polling.interval_ms) ?? 30000,
     },
     workspace: {
       root: resolveWorkspaceRoot(readString(workspace.root), context),
     },
     hooks: {
+      afterCreate: readString(hooks.after_create) ?? null,
+      beforeRun: readString(hooks.before_run) ?? null,
+      afterRun: readString(hooks.after_run) ?? null,
+      beforeRemove: readString(hooks.before_remove) ?? null,
       timeoutMs: readPositiveInteger(hooks.timeout_ms) ?? 60000,
     },
     agent: {
@@ -78,6 +94,9 @@ export function resolveConfig(raw: unknown, context: ResolveConfigContext): Effe
       turnTimeoutMs: readPositiveInteger(codex.turn_timeout_ms) ?? 3600000,
       readTimeoutMs: readPositiveInteger(codex.read_timeout_ms) ?? 5000,
       stallTimeoutMs: readPositiveInteger(codex.stall_timeout_ms) ?? 300000,
+      approvalPolicy: readString(codex.approval_policy),
+      threadSandbox: readString(codex.thread_sandbox),
+      turnSandboxPolicy: readString(codex.turn_sandbox_policy),
     },
   };
 }
@@ -134,7 +153,7 @@ function readPositiveIntegerMap(value: unknown): Map<string, number> {
 
 function resolveTrackerApiKey(value: string | undefined, env: Record<string, string | undefined>): string | undefined {
   if (value === undefined) {
-    return undefined;
+    return env.LINEAR_API_KEY;
   }
 
   if (/^\$[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {

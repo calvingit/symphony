@@ -71,11 +71,7 @@ function parseFrontMatter(frontMatter: string | null): Record<string, unknown> {
     throw new WorkflowError("workflow_parse_error", `Workflow YAML failed to parse: ${String(error)}`);
   }
 
-  if (parsed === null) {
-    return {};
-  }
-
-  if (typeof parsed !== "object" || Array.isArray(parsed)) {
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new WorkflowError("workflow_front_matter_not_a_map", "Workflow front matter must decode to an object.");
   }
 
