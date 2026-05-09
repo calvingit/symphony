@@ -19,9 +19,11 @@ describe("resolveConfig", () => {
       },
     );
 
+    expect(config.tracker.kind).toBe("linear");
     expect(config.tracker.endpoint).toBe("https://api.linear.app/graphql");
     expect(config.tracker.apiKey).toBe("token-1");
     expect(config.tracker.activeStates).toEqual(["Todo", "In Progress"]);
+    expect(config.tracker.terminalStates).toEqual(["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]);
     expect(config.polling.intervalMs).toBe(30000);
     expect(config.hooks).toEqual({
       afterCreate: null,
@@ -31,7 +33,13 @@ describe("resolveConfig", () => {
       timeoutMs: 60000,
     });
     expect(config.workspace.root).toBe("/tmp/symphony_workspaces");
+    expect(config.agent.maxConcurrentAgents).toBe(10);
     expect(config.agent.maxTurns).toBe(20);
+    expect(config.agent.maxRetryBackoffMs).toBe(300000);
+    expect(config.codex.command).toBe("codex app-server");
+    expect(config.codex.turnTimeoutMs).toBe(3600000);
+    expect(config.codex.readTimeoutMs).toBe(5000);
+    expect(config.codex.stallTimeoutMs).toBe(300000);
   });
 
   it("resolves missing tracker auth from the canonical Linear environment variable", () => {
@@ -46,6 +54,34 @@ describe("resolveConfig", () => {
     );
 
     expect(config.tracker.apiKey).toBe("canonical-token");
+  });
+
+  it("preserves explicit literal tracker auth", () => {
+    const config = resolveConfig(
+      { tracker: { kind: "linear", api_key: "local-dev-token", project_slug: "symphony-local" } },
+      {
+        workflowDirectory: "/repo",
+        env: { LINEAR_API_KEY: "canonical-token" },
+        homeDirectory: "/Users/tester",
+        tempDirectory: "/tmp",
+      },
+    );
+
+    expect(config.tracker.apiKey).toBe("local-dev-token");
+  });
+
+  it("resolves arbitrary env-backed tracker auth variables", () => {
+    const config = resolveConfig(
+      { tracker: { kind: "linear", api_key: "$CUSTOM_LINEAR_TOKEN", project_slug: "symphony-local" } },
+      {
+        workflowDirectory: "/repo",
+        env: { CUSTOM_LINEAR_TOKEN: "custom-token" },
+        homeDirectory: "/Users/tester",
+        tempDirectory: "/tmp",
+      },
+    );
+
+    expect(config.tracker.apiKey).toBe("custom-token");
   });
 
   it("resolves top-level polling interval", () => {
@@ -127,6 +163,59 @@ describe("resolveConfig", () => {
     );
 
     expect(config.workspace.root).toBe("/repo/config/.workspaces");
+  });
+
+  it("expands workspace roots under the home directory", () => {
+    const config = resolveConfig(
+      { workspace: { root: "~/symphony-workspaces" } },
+      {
+        workflowDirectory: "/repo/config",
+        env: {},
+        homeDirectory: "/Users/tester",
+        tempDirectory: "/tmp",
+      },
+    );
+
+    expect(config.workspace.root).toBe("/Users/tester/symphony-workspaces");
+  });
+
+  it("resolves agent concurrency and retry backoff limits", () => {
+    const config = resolveConfig(
+      { agent: { max_concurrent_agents: "4", max_retry_backoff_ms: "120000" } },
+      {
+        workflowDirectory: "/repo",
+        env: {},
+        homeDirectory: "/Users/tester",
+        tempDirectory: "/tmp",
+      },
+    );
+
+    expect(config.agent.maxConcurrentAgents).toBe(4);
+    expect(config.agent.maxRetryBackoffMs).toBe(120000);
+  });
+
+  it("resolves Codex command and timeout fields", () => {
+    const config = resolveConfig(
+      {
+        codex: {
+          command: "codex exec",
+          turn_timeout_ms: "1000",
+          read_timeout_ms: "2000",
+          stall_timeout_ms: "3000",
+        },
+      },
+      {
+        workflowDirectory: "/repo",
+        env: {},
+        homeDirectory: "/Users/tester",
+        tempDirectory: "/tmp",
+      },
+    );
+
+    expect(config.codex.command).toBe("codex exec");
+    expect(config.codex.turnTimeoutMs).toBe(1000);
+    expect(config.codex.readTimeoutMs).toBe(2000);
+    expect(config.codex.stallTimeoutMs).toBe(3000);
   });
 
   it("normalizes per-state concurrency limits and ignores non-positive values", () => {

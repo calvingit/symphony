@@ -16,4 +16,16 @@ describe("renderPrompt", () => {
       "template_render_error",
     );
   });
+
+  it("renders the default prompt for empty templates", async () => {
+    await expect(renderPrompt(" \n ", { issue: {}, attempt: null })).resolves.toBe(
+      "You are working on an issue from Linear.",
+    );
+  });
+
+  it("fails unknown filters", async () => {
+    await expect(renderPrompt("{{ issue.identifier | missing_filter }}", { issue: {}, attempt: null })).rejects.toThrow(
+      "template_render_error",
+    );
+  });
 });
