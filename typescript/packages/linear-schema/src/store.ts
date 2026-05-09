@@ -76,7 +76,11 @@ export function createInMemoryStore(): LocalLinearStore {
     async updateIssue(id, input) {
       const issue = issues.get(id);
       if (!issue) return null;
-      const updated = { ...issue, ...input, updatedAt: new Date().toISOString() };
+      const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      for (const [key, value] of Object.entries(input)) {
+        if (value !== undefined) (patch as any)[key] = value;
+      }
+      const updated = { ...issue, ...patch };
       issues.set(id, updated);
       return updated;
     },
