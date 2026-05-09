@@ -153,11 +153,12 @@ function readPositiveIntegerMap(value: unknown): Map<string, number> {
 
 function resolveTrackerApiKey(value: string | undefined, env: Record<string, string | undefined>): string | undefined {
   if (value === undefined) {
-    return env.LINEAR_API_KEY;
+    return env.LINEAR_API_KEY || undefined;
   }
 
   if (/^\$[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
-    return env[value.slice(1)];
+    const resolved = env[value.slice(1)];
+    return resolved || undefined;
   }
 
   return value;

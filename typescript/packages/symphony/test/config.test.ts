@@ -218,6 +218,34 @@ describe("resolveConfig", () => {
     expect(config.codex.stallTimeoutMs).toBe(3000);
   });
 
+  it("treats empty env var as missing api_key", () => {
+    const config = resolveConfig(
+      { tracker: { kind: "linear", api_key: "$LINEAR_API_KEY", project_slug: "symphony-local" } },
+      {
+        workflowDirectory: "/repo",
+        env: { LINEAR_API_KEY: "" },
+        homeDirectory: "/Users/tester",
+        tempDirectory: "/tmp",
+      },
+    );
+
+    expect(config.tracker.apiKey).toBeUndefined();
+  });
+
+  it("treats empty canonical LINEAR_API_KEY as missing", () => {
+    const config = resolveConfig(
+      { tracker: { kind: "linear", project_slug: "symphony-local" } },
+      {
+        workflowDirectory: "/repo",
+        env: { LINEAR_API_KEY: "" },
+        homeDirectory: "/Users/tester",
+        tempDirectory: "/tmp",
+      },
+    );
+
+    expect(config.tracker.apiKey).toBeUndefined();
+  });
+
   it("normalizes per-state concurrency limits and ignores non-positive values", () => {
     const config = resolveConfig(
       {
