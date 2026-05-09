@@ -1,14 +1,12 @@
-import { join } from "node:path";
-import { createLinearGraphqlServer, createSqliteStore } from "@symphony/linear-schema";
+import { createLinearGraphqlServer } from "@symphony/linear-schema/server";
+import { createInMemoryStore } from "@symphony/linear-schema/store";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let yoga: any;
+let yoga: { fetch: (...args: any[]) => Promise<Response> } | undefined;
 
 function getYoga() {
   if (!yoga) {
-    const databasePath = process.env.LINEAR_LOCAL_DB ?? join(process.cwd(), ".linear-local.sqlite");
     const token = process.env.LINEAR_LOCAL_TOKEN ?? "local-dev-token";
-    const store = createSqliteStore(databasePath);
+    const store = createInMemoryStore();
     store.seedDefaultProject("symphony-local");
     yoga = createLinearGraphqlServer({ store, token });
   }
