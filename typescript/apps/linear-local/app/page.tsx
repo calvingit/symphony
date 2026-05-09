@@ -1,10 +1,16 @@
+"use client";
+
+import { Navbar } from "../components/Navbar";
+import { KanbanBoard } from "../components/KanbanBoard";
+import { useKanbanStore } from "../lib/store";
+
 export default function Page() {
+  const { isLoading, loadIssues } = useKanbanStore();
+
   return (
-    <main style={{ maxWidth: 960, margin: "40px auto", fontFamily: "system-ui, sans-serif" }}>
-      <h1>Symphony Local Linear</h1>
-      <p>GraphQL endpoint: <code>/graphql</code></p>
-      <p>Default project slug: <code>symphony-local</code></p>
-      <p>Default bearer token: <code>local-dev-token</code></p>
-    </main>
+    <div className="h-screen flex flex-col bg-[#f7f7f7]">
+      <Navbar onRefresh={loadIssues} isLoading={isLoading} />
+      <KanbanBoard />
+    </div>
   );
 }

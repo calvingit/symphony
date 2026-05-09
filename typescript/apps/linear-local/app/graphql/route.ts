@@ -1,20 +1,12 @@
 import { createLinearGraphqlServer } from "@symphony/linear-schema/server";
-import { createInMemoryStore } from "@symphony/linear-schema/store";
+import { getStore } from "../../lib/shared-store";
 
-let yoga: { fetch: (...args: any[]) => Promise<Response> } | undefined;
-
-function getYoga() {
-  if (!yoga) {
-    const token = process.env.LINEAR_LOCAL_TOKEN ?? "local-dev-token";
-    const store = createInMemoryStore();
-    store.seedDefaultProject("symphony-local");
-    yoga = createLinearGraphqlServer({ store, token });
-  }
-  return yoga;
-}
+const store = getStore();
+const token = process.env.LINEAR_LOCAL_TOKEN ?? "local-dev-token";
+const yoga = createLinearGraphqlServer({ store, token });
 
 async function handle(request: Request): Promise<Response> {
-  return getYoga().fetch(request);
+  return yoga.fetch(request);
 }
 
 export { handle as GET, handle as POST };
