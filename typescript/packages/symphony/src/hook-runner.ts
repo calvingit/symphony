@@ -14,8 +14,10 @@ export function runHook(input: { script: string | null; cwd: string; timeoutMs: 
     return Promise.resolve({ ok: true, exitCode: 0, signal: null, stdout: "", stderr: "", timedOut: false });
   }
 
+  const script = input.script;
+
   return new Promise((resolve) => {
-    const child = spawn("bash", ["-lc", input.script], { cwd: input.cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("bash", ["-lc", script], { cwd: input.cwd, stdio: ["ignore", "pipe", "pipe"] }) as import("node:child_process").ChildProcess;
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -24,10 +26,10 @@ export function runHook(input: { script: string | null; cwd: string; timeoutMs: 
       child.kill("SIGTERM");
     }, input.timeoutMs);
 
-    child.stdout.on("data", (chunk) => {
+    child.stdout?.on("data", (chunk) => {
       stdout += chunk.toString("utf8");
     });
-    child.stderr.on("data", (chunk) => {
+    child.stderr?.on("data", (chunk) => {
       stderr += chunk.toString("utf8");
     });
     child.on("close", (exitCode, signal) => {

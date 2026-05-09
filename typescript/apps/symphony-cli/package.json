@@ -10,6 +10,7 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.2",
     "@symphony/core": "workspace:*",
     "@symphony/symphony": "workspace:*",
     "commander": "^13.1.0",
