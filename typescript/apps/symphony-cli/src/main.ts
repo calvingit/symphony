@@ -25,9 +25,19 @@ export async function startSymphony(input: { workflowPath: string; port: number 
     tracker: {
       fetchCandidateIssues: (states) => client.fetchCandidateIssues(states),
       fetchIssuesByStates: async () => [],
-      fetchIssueStatesByIds: async () => new Map(),
+      fetchIssueStatesByIds: (ids) => client.fetchIssuesByIds(ids),
     },
-    runIssue: (issue, attempt) => runAgentAttempt({ issue, attempt, workflowPrompt: workflow.promptTemplate, config }),
+    runIssue: async (issue, attempt) => {
+      if (issue.state !== "In Progress") {
+        await client.updateIssueState(issue.id, "In Progress").catch(() => {});
+      }
+
+      const result = await runAgentAttempt({ issue, attempt, workflowPrompt: workflow.promptTemplate, config });
+
+      const terminalState = result.status === "normal" ? "Done" : "Rework";
+      await client.updateIssueState(issue.id, terminalState).catch(() => {});
+      return result;
+    },
     activeStates: config.tracker.activeStates,
     terminalStates: config.tracker.terminalStates,
     maxConcurrentAgents: config.agent.maxConcurrentAgents,

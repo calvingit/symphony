@@ -25,6 +25,35 @@ export class LinearClient {
     return Array.isArray(nodes) ? nodes.map(normalizeIssue) : [];
   }
 
+  async updateIssueState(id: string, stateName: string): Promise<void> {
+    await this.graphql({
+      query: `mutation UpdateIssueState($id: ID!, $stateName: String!) {
+        issueUpdate(id: $id, input: { stateName: $stateName }) { success }
+      }`,
+      variables: { id, stateName },
+    });
+  }
+
+  async fetchIssuesByIds(ids: string[]): Promise<Map<string, Issue | null>> {
+    if (ids.length === 0) return new Map();
+    const body = await this.graphql({
+      query: `query Nodes($ids: [ID!]!) {
+        nodes(ids: $ids) { id identifier title state { name } }
+      }`,
+      variables: { ids },
+    });
+    const nodes: Array<{ id: string; identifier: string; title: string; state: { name: string } }> =
+      body.data?.nodes ?? [];
+    const map = new Map<string, Issue | null>();
+    for (const node of nodes) {
+      map.set(node.id, normalizeIssue(node));
+    }
+    for (const id of ids) {
+      if (!map.has(id)) map.set(id, null);
+    }
+    return map;
+  }
+
   private async graphql(input: { query: string; variables: Record<string, unknown> }): Promise<any> {
     const response = await this.input.fetch(this.input.endpoint, {
       method: "POST",
