@@ -31,18 +31,14 @@ export interface KanbanIssue {
   createdAt: string | null;
 }
 
-export interface IssuesData {
-  issues: {
-    nodes: KanbanIssue[];
-  };
-}
-
 export async function fetchIssues(stateNames: string[]): Promise<KanbanIssue[]> {
-  const data = await request<IssuesData>(
+  const data = await request<{
+    issues: { nodes: Array<Omit<KanbanIssue, "state"> & { state: { name: string } }> };
+  }>(
     `query Issues($stateNames: [String!]!, $projectSlug: String!) {
       issues(filter: { state: { name: { in: $stateNames } }, project: { slugId: { eq: $projectSlug } } }, first: 100) {
         nodes {
-          id identifier title state priority description branchName url
+          id identifier title state { name } priority description branchName url
           labels { nodes { name } }
           updatedAt createdAt
         }
@@ -50,7 +46,7 @@ export async function fetchIssues(stateNames: string[]): Promise<KanbanIssue[]> 
     }`,
     { stateNames, projectSlug: "symphony-local" },
   );
-  return data.issues.nodes;
+  return data.issues.nodes.map((n) => ({ ...n, state: n.state.name }));
 }
 
 export async function updateIssueState(id: string, stateName: string): Promise<void> {
