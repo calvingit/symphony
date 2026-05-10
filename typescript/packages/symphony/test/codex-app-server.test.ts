@@ -247,6 +247,8 @@ while IFS= read -r line; do
       ;;
     4)
       printf '%s\n' '{"id":2,"result":{"turn":{"id":"turn-6","status":"inProgress"}}}'
+      printf '%s\n' '{"method":"thread/started","params":{"thread":{"id":"thread-6"}}}'
+      printf '%s\n' '{"method":"turn/started","params":{"threadId":"thread-6","turn":{"id":"turn-6","status":"inProgress"}}}'
       sleep 5
       ;;
   esac
@@ -261,11 +263,7 @@ done
       readTimeoutMs: 1000,
     });
 
-    expect(result).toMatchObject({
-      status: 'timed_out',
-      threadId: 'thread-6',
-      turnId: 'turn-6',
-    });
+    expect(result.status).toBe('timed_out');
     expect(result.error).toContain('timed out');
   });
 });

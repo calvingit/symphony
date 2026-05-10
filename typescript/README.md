@@ -15,6 +15,22 @@ pnpm install
 pnpm dev:linear
 ```
 
+Or start the full local stack with one command:
+
+```bash
+make dev
+```
+
+Useful Make targets:
+
+```bash
+make linear    # start only the local tracker
+make symphony  # start only the Symphony CLI on port 4010
+make status    # show background service status
+make logs      # tail tmp/dev/*.log
+make stop      # stop services started by the Makefile
+```
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `http://localhost:3001/` | GET | Kanban board UI |

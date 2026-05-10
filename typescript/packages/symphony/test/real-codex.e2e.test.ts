@@ -81,27 +81,32 @@ Finish after the file is created.
       const snapshot = tracker.snapshot();
       const run = snapshot.runs[0];
       const eventNames = snapshot.events.map((event) => event.eventName);
+      if (result.status !== 'normal') {
+        const lastError =
+          [...snapshot.events]
+            .reverse()
+            .find((event) => typeof event.error === 'string' && event.error.length > 0)?.error ??
+          result.error ??
+          'unknown error';
+        throw new Error(`Real Codex E2E failed before completion: ${lastError}`);
+      }
+
       expect(run?.threadId).toBeTruthy();
       expect(run?.turnId).toBeTruthy();
       expect(eventNames).toEqual(
         expect.arrayContaining(["codex.thread.started", "codex.turn.started"]),
       );
       expect(
-        eventNames.some((name) =>
-          name === "codex.command.started" ||
-          name === "codex.file_change.started" ||
-          name === "codex.command.completed" ||
-          name === "codex.file_change.completed",
+        eventNames.some(
+          (name) =>
+            name === 'codex.command.started' ||
+            name === 'codex.file_change.started' ||
+            name === 'codex.command.completed' ||
+            name === 'codex.file_change.completed',
         ),
       ).toBe(true);
-      expect(
-        result.status === "normal" || (result.status === "failed" && typeof result.error === "string" && result.error.length > 0),
-      ).toBe(true);
-
-      if (result.status === "normal") {
-        const marker = await readFile(join(root, "LOC-REAL-1", "real-codex-smoke.txt"), "utf8");
-        expect(marker.trim()).toBe("real-codex-ok");
-      }
+      const marker = await readFile(join(root, 'LOC-REAL-1', 'real-codex-smoke.txt'), 'utf8');
+      expect(marker.trim()).toBe('real-codex-ok');
     },
     180000,
   );

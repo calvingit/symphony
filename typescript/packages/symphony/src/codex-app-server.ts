@@ -162,7 +162,7 @@ export function runAppServerTurn(input: {
             dynamicTools: getDynamicToolSpecs(),
           }),
         );
-        threadId = readString(getRecordId(threadResult, 'thread')) ?? threadId;
+        threadId = readThreadId(threadResult) ?? threadId;
         const turnResult = asRecord(
           await sendRequest('turn/start', {
             threadId,
@@ -172,7 +172,7 @@ export function runAppServerTurn(input: {
             sandboxPolicy: normalizeTurnSandboxPolicy(input.turnSandboxPolicy, input.cwd),
           }),
         );
-        turnId = readString(getRecordId(turnResult, 'turn')) ?? turnId;
+        turnId = readTurnId(turnResult) ?? turnId;
       } catch (error) {
         finalize('failed', normalizeError(error), true);
       }
@@ -339,16 +339,32 @@ export function runAppServerTurn(input: {
 
     function updateIdsFromPayload(payload: Record<string, unknown>): void {
       const params = asRecord(payload.params);
+      const result = asRecord(payload.result);
       const turn = asRecord(params?.turn);
       const thread = asRecord(params?.thread);
       const item = asRecord(params?.item);
+      const resultTurn = asRecord(result?.turn);
+      const resultThread = asRecord(result?.thread);
+      const resultItem = asRecord(result?.item);
       threadId =
-        readString(params?.threadId) ??
-        readString(thread?.id) ??
-        readString(item?.threadId) ??
-        threadId;
+        firstString(
+          params?.threadId,
+          result?.threadId,
+          thread?.id,
+          resultThread?.id,
+          resultThread?.threadId,
+          item?.threadId,
+          resultItem?.threadId,
+        ) ?? threadId;
       turnId =
-        readString(params?.turnId) ?? readString(turn?.id) ?? readString(item?.turnId) ?? turnId;
+        firstString(
+          params?.turnId,
+          result?.turnId,
+          turn?.id,
+          resultTurn?.id,
+          item?.turnId,
+          resultItem?.turnId,
+        ) ?? turnId;
     }
   });
 }
@@ -370,13 +386,16 @@ function isNotification(payload: Record<string, unknown>): boolean {
 function normalizeThreadSandbox(value: string | undefined): string {
   switch (value) {
     case 'read-only':
-      return 'readOnly';
+    case 'readOnly':
+      return 'read-only';
     case 'workspace-write':
-      return 'workspaceWrite';
+    case 'workspaceWrite':
+      return 'workspace-write';
     case 'danger-full-access':
-      return 'dangerFullAccess';
+    case 'dangerFullAccess':
+      return 'danger-full-access';
     default:
-      return value ?? 'workspaceWrite';
+      return value ?? 'workspace-write';
   }
 }
 
@@ -445,8 +464,14 @@ function describeProcessExit(code: number | null, stderrLines: string[]): string
   return `Codex app-server exited before the turn completed with code ${code ?? 'unknown'}.${stderrPreview}`;
 }
 
-function getRecordId(result: Record<string, unknown> | null, key: string): unknown {
-  return asRecord(result?.[key])?.id;
+function readThreadId(result: Record<string, unknown> | null): string | null {
+  if (!result) return null;
+  return firstString(result.threadId, asRecord(result.thread)?.id, result.id);
+}
+
+function readTurnId(result: Record<string, unknown> | null): string | null {
+  if (!result) return null;
+  return firstString(result.turnId, asRecord(result.turn)?.id, result.id);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -458,6 +483,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string') return value;
+  }
+  return null;
 }
 
 function normalizeError(error: unknown): string {
