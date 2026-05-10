@@ -15,6 +15,7 @@ import { TaskCard } from "./TaskCard";
 import { HiddenColumns } from "./HiddenColumns";
 import { CreateTaskDialog } from "./CreateTaskDialog";
 import { ProjectsDialog } from "./ProjectsDialog";
+import { IssueDetailsDialog } from "./IssueDetailsDialog";
 import { useKanbanStore, COLUMNS } from "../lib/store";
 import type { KanbanIssue } from "../lib/graphql";
 
@@ -39,6 +40,7 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
 
   const [activeIssue, setActiveIssue] = useState<KanbanIssue | null>(null);
   const [createColumn, setCreateColumn] = useState<string | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<KanbanIssue | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -81,7 +83,14 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
   );
 
   const handleCreate = useCallback(
-    async (input: { title: string; description: string; state: string }) => {
+    async (input: {
+      title: string;
+      description: string;
+      state: string;
+      priority: import("@symphony/core").IssuePriority | null;
+      branchName: string | null;
+      labels: string[];
+    }) => {
       await addIssue(input);
     },
     [addIssue],
@@ -104,6 +113,7 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
                   issues={issues.filter((i: KanbanIssue) => i.state === col.id)}
                   runs={runs}
                   onCreateClick={setCreateColumn}
+                  onIssueClick={setSelectedIssue}
                 />
               ))}
             </div>
@@ -136,6 +146,12 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
         onCreate={addProject}
         onUpdate={editProject}
         onDelete={removeProject}
+      />
+
+      <IssueDetailsDialog
+        issue={selectedIssue}
+        run={selectedIssue ? runs[selectedIssue.id] : undefined}
+        onClose={() => setSelectedIssue(null)}
       />
     </>
   );

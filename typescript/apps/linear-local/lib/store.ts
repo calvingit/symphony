@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { IssuePriority } from "@symphony/core";
 import type { KanbanIssue, ProjectRecord, ProjectWorkspace, RunProgress } from "./graphql";
 import {
   createIssue,
@@ -36,7 +37,14 @@ interface KanbanStore {
   loadIssues: () => Promise<void>;
   loadRuns: () => Promise<void>;
   moveIssue: (issueId: string, newState: string) => Promise<void>;
-  addIssue: (input: { title: string; description: string; state: string }) => Promise<void>;
+  addIssue: (input: {
+    title: string;
+    description: string;
+    state: string;
+    priority: IssuePriority | null;
+    branchName: string | null;
+    labels: string[];
+  }) => Promise<void>;
   selectProject: (slugId: string) => void;
   addProject: (input: { slugId: string; name: string; workspace: ProjectWorkspace }) => Promise<void>;
   editProject: (
@@ -94,10 +102,18 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
     }
   },
 
-  addIssue: async ({ title, description, state }) => {
+  addIssue: async ({ title, description, state, priority, branchName, labels }) => {
     const projectSlug = get().selectedProjectSlug;
     if (!projectSlug) return;
-    const issue = await createIssue({ title, description, stateName: state, projectSlug });
+    const issue = await createIssue({
+      title,
+      description,
+      stateName: state,
+      projectSlug,
+      priority,
+      branchName,
+      labels,
+    });
     if (issue) {
       set({ issues: [...get().issues, issue] });
     }

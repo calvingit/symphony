@@ -121,7 +121,7 @@ function buildHookEnv(input: {
     SYMPHONY_ISSUE_BRANCH_NAME: input.issue.branchName ?? undefined,
     SYMPHONY_ISSUE_URL: input.issue.url ?? undefined,
     SYMPHONY_ISSUE_PRIORITY:
-      typeof input.issue.priority === 'number' ? String(input.issue.priority) : undefined,
+      typeof input.issue.priority === 'string' ? input.issue.priority : undefined,
     SYMPHONY_PROJECT_SLUG: input.issue.project?.slugId ?? undefined,
     SYMPHONY_PROJECT_NAME: input.issue.project?.name ?? undefined,
     SYMPHONY_PROJECT_WORKSPACE_KIND: input.issue.project?.workspace.kind ?? undefined,

@@ -170,6 +170,9 @@ describe("local Linear GraphQL", () => {
             issue {
               title
               description
+              priority
+              branchName
+              labels { nodes { name } }
               project { slugId workspace { kind localPath baseBranch } }
             }
           }
@@ -178,8 +181,11 @@ describe("local Linear GraphQL", () => {
           input: {
             title: "Implement workspace selector",
             description: "Need CRUD for project workspaces",
+            priority: "high",
             stateName: "Todo",
             projectSlug: "repo-b",
+            branchName: "feature/workspace-selector",
+            labels: ["UI", " Workflow "],
           },
         },
       }),
@@ -189,6 +195,11 @@ describe("local Linear GraphQL", () => {
     expect(body.data.issueCreate.issue).toEqual({
       title: "Implement workspace selector",
       description: "Need CRUD for project workspaces",
+      priority: "high",
+      branchName: "feature/workspace-selector",
+      labels: {
+        nodes: [{ name: "ui" }, { name: "workflow" }],
+      },
       project: {
         slugId: "repo-b",
         workspace: {

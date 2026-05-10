@@ -26,7 +26,7 @@ export const typeDefs = /* GraphQL */ `
     identifier: String!
     title: String!
     description: String
-    priority: Int
+    priority: String
     state: WorkflowState!
     project: Project!
     branchName: String
@@ -135,15 +135,18 @@ export const typeDefs = /* GraphQL */ `
   input IssueCreateInput {
     title: String!
     description: String
+    priority: String
     stateName: String!
     projectSlug: String!
+    branchName: String
+    labels: [String!]
   }
 
   input IssueUpdateInput {
     title: String
     description: String
     stateName: String
-    priority: Int
+    priority: String
     branchName: String
     url: String
     labels: [String!]

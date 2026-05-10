@@ -12,9 +12,10 @@ interface KanbanColumnProps {
   issues: KanbanIssue[];
   runs: Record<string, RunProgress>;
   onCreateClick: (columnId: string) => void;
+  onIssueClick: (issue: KanbanIssue) => void;
 }
 
-export function KanbanColumn({ columnId, issues, runs, onCreateClick }: KanbanColumnProps) {
+export function KanbanColumn({ columnId, issues, runs, onCreateClick, onIssueClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const column = COLUMNS.find((c: { id: string; label: string; color: string }) => c.id === columnId);
   const color = column?.color ?? "#6b6b6b";
@@ -50,7 +51,7 @@ export function KanbanColumn({ columnId, issues, runs, onCreateClick }: KanbanCo
       >
         <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {issues.map((issue) => (
-            <TaskCard key={issue.id} issue={issue} run={runs[issue.id]} />
+            <TaskCard key={issue.id} issue={issue} run={runs[issue.id]} onClick={onIssueClick} />
           ))}
         </SortableContext>
       </div>

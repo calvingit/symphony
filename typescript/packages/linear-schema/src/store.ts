@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { IssuePriority } from '@symphony/core';
 
 export interface LocalProjectWorkspace {
   kind: "local" | "remote";
@@ -19,7 +20,7 @@ export interface LocalIssue {
   identifier: string;
   title: string;
   description: string | null;
-  priority: number | null;
+  priority: IssuePriority | null;
   state: string;
   projectSlug: string;
   branchName: string | null;
@@ -33,8 +34,11 @@ export interface CreateIssueInput {
   identifier: string;
   title: string;
   description?: string | null;
+  priority?: IssuePriority | null;
   state: string;
   projectSlug: string;
+  branchName?: string | null;
+  labels?: string[];
 }
 
 export interface CreateProjectInput {
@@ -134,12 +138,12 @@ export function createInMemoryStore(): LocalLinearStore {
         identifier: input.identifier,
         title: input.title,
         description: input.description ?? null,
-        priority: null,
+        priority: input.priority ?? null,
         state: input.state,
         projectSlug: input.projectSlug,
-        branchName: null,
+        branchName: input.branchName ?? null,
         url: `http://localhost:3001/issues/${input.identifier}`,
-        labels: [],
+        labels: input.labels ?? [],
         createdAt: now,
         updatedAt: now,
       };

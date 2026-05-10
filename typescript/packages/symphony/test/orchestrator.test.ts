@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Issue } from "@symphony/core";
 import { createOrchestrator } from "../src/orchestrator.js";
 import type { Tracker } from "../src/tracker.js";
 
@@ -14,7 +15,7 @@ describe("orchestrator", () => {
         identifier: "LOC-1",
         title: "Work",
         description: null,
-        priority: 1,
+        priority: "high",
         state: "Todo",
         branchName: null,
         url: null,
@@ -22,7 +23,7 @@ describe("orchestrator", () => {
         blockedBy: [],
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: null,
-      }]),
+      } satisfies Issue]),
       fetchIssueStatesByIds: vi.fn(async () => new Map()),
       fetchIssuesByStates: vi.fn(async () => []),
     };
@@ -49,7 +50,7 @@ describe("orchestrator", () => {
       identifier: "LOC-1",
       title: "Work",
       description: null,
-      priority: 1,
+      priority: "high",
       state: "Todo",
       branchName: null,
       url: null,
@@ -57,7 +58,7 @@ describe("orchestrator", () => {
       blockedBy: [],
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: null,
-    };
+    } satisfies Issue;
     const tracker: Tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
       fetchIssueStatesByIds: vi.fn(async () => new Map()),
@@ -92,7 +93,7 @@ describe("orchestrator", () => {
       identifier: "LOC-1",
       title: "Work",
       description: null,
-      priority: 1,
+      priority: "high",
       state: "Todo",
       branchName: null,
       url: null,
@@ -100,7 +101,7 @@ describe("orchestrator", () => {
       blockedBy: [],
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: null,
-    };
+    } satisfies Issue;
     const terminalIssue = { ...activeIssue, state: "Done" };
     const tracker: Tracker = {
       fetchCandidateIssues: vi.fn()
@@ -134,7 +135,7 @@ describe("orchestrator", () => {
       identifier: "LOC-1",
       title: "Work",
       description: null,
-      priority: 1,
+      priority: "high",
       state: "Todo",
       branchName: null,
       url: null,
@@ -142,7 +143,7 @@ describe("orchestrator", () => {
       blockedBy: [],
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: null,
-    };
+    } satisfies Issue;
     const statuses: string[] = [];
     const tracker: Tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
@@ -172,7 +173,7 @@ describe("orchestrator", () => {
       identifier: "LOC-1",
       title: "Work",
       description: null,
-      priority: 1,
+      priority: "high",
       state: "Todo",
       branchName: null,
       url: null,
@@ -180,7 +181,7 @@ describe("orchestrator", () => {
       blockedBy: [],
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: null,
-    };
+    } satisfies Issue;
     const statuses: string[] = [];
     const tracker: Tracker = {
       fetchCandidateIssues: vi.fn(async () => [issue]),
@@ -202,5 +203,58 @@ describe("orchestrator", () => {
 
     expect(statuses).toEqual(["claimed"]);
     expect(orchestrator.snapshot().counts.retrying).toBe(0);
+  });
+
+  it("dispatches higher string priorities first", async () => {
+    const tracker: Tracker = {
+      fetchCandidateIssues: vi.fn(async () => [
+        {
+          id: "1",
+          identifier: "LOC-1",
+          title: "Low priority",
+          description: null,
+          priority: "low",
+          state: "Todo",
+          branchName: null,
+          url: null,
+          labels: [],
+          blockedBy: [],
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: null,
+        } satisfies Issue,
+        {
+          id: "2",
+          identifier: "LOC-2",
+          title: "Urgent priority",
+          description: null,
+          priority: "urgent",
+          state: "Todo",
+          branchName: null,
+          url: null,
+          labels: [],
+          blockedBy: [],
+          createdAt: "2026-01-02T00:00:00Z",
+          updatedAt: null,
+        } satisfies Issue,
+      ]),
+      fetchIssueStatesByIds: vi.fn(async () => new Map()),
+      fetchIssuesByStates: vi.fn(async () => []),
+    };
+    const calls: string[] = [];
+    const orchestrator = createOrchestrator({
+      tracker,
+      runIssue: vi.fn(async (issue) => {
+        calls.push(issue.identifier);
+        return { status: "normal" as const };
+      }),
+      activeStates: ["Todo"],
+      terminalStates: ["Done"],
+      maxConcurrentAgents: 2,
+      maxConcurrentAgentsByState: new Map(),
+    });
+
+    await orchestrator.tick();
+
+    expect(calls).toEqual(["LOC-2", "LOC-1"]);
   });
 });

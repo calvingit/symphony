@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { Pencil, Trash2, X } from "lucide-react";
 import type { ProjectRecord, ProjectWorkspace } from "../lib/graphql";
 
 interface ProjectsDialogProps {
@@ -34,6 +34,10 @@ const EMPTY_FORM: FormState = {
   baseBranch: "main",
 };
 
+function toDefaultSlug(value: string): string {
+  return value.trim().replace(/\s+/g, "-").toLowerCase();
+}
+
 export function ProjectsDialog({
   open,
   projects,
@@ -50,9 +54,10 @@ export function ProjectsDialog({
     () => projects.find((project) => project.slugId === editingSlug) ?? null,
     [projects, editingSlug],
   );
+  const defaultSlug = useMemo(() => toDefaultSlug(form.name), [form.name]);
   const canSubmit =
-    Boolean(form.slugId.trim()) &&
     Boolean(form.name.trim()) &&
+    Boolean(editingProject ? form.slugId.trim() : form.slugId.trim() || defaultSlug) &&
     Boolean(form.baseBranch.trim()) &&
     (form.kind === "local" ? Boolean(form.localPath.trim()) : Boolean(form.remoteUrl.trim()));
 
@@ -82,7 +87,7 @@ export function ProjectsDialog({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (submitting) return;
-    const slugId = form.slugId.trim();
+    const slugId = editingProject ? form.slugId.trim() : form.slugId.trim() || defaultSlug;
     const name = form.name.trim();
     const baseBranch = form.baseBranch.trim();
     if (!slugId || !name || !baseBranch) return;
@@ -130,17 +135,8 @@ export function ProjectsDialog({
 
         <div className="grid gap-0 md:grid-cols-[1.2fr_1fr]">
           <div className="border-r border-gray-200 p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                Existing projects
-              </span>
-              <button
-                onClick={() => setEditingSlug(null)}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 hover:bg-blue-50"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New</span>
-              </button>
+            <div className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+              Existing projects
             </div>
 
             <div className="space-y-2">
@@ -188,25 +184,25 @@ export function ProjectsDialog({
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <label className="block">
+                <span className="mb-1 block text-xs text-gray-500">Project name</span>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                  placeholder="Symphony Local"
+                />
+              </label>
+
+              <label className="block">
                 <span className="mb-1 block text-xs text-gray-500">Project slug</span>
                 <input
                   type="text"
                   value={form.slugId}
                   disabled={Boolean(editingProject)}
                   onChange={(event) => setForm((current) => ({ ...current, slugId: event.target.value }))}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
-                  placeholder="symphony-local"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-1 block text-xs text-gray-500">Project name</span>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Symphony Local"
+                  placeholder={defaultSlug || "symphony-local"}
                 />
               </label>
 

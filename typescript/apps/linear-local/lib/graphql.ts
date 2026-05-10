@@ -1,3 +1,5 @@
+import type { IssuePriority } from "@symphony/core";
+
 const ENDPOINT = "/graphql";
 
 async function request<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
@@ -8,7 +10,16 @@ async function request<T>(query: string, variables?: Record<string, unknown>): P
     },
     body: JSON.stringify({ query, variables }),
   });
-  const body = await res.json();
+  const text = await res.text();
+  let body: { data?: T; errors?: Array<{ message?: string }> };
+  try {
+    body = text ? (JSON.parse(text) as { data?: T; errors?: Array<{ message?: string }> }) : {};
+  } catch {
+    throw new Error(`GraphQL returned invalid JSON (${res.status})`);
+  }
+  if (!res.ok) {
+    throw new Error(body.errors?.[0]?.message ?? `GraphQL request failed (${res.status})`);
+  }
   if (body.errors) {
     throw new Error(body.errors[0]?.message ?? "GraphQL error");
   }
@@ -20,7 +31,7 @@ export interface KanbanIssue {
   identifier: string;
   title: string;
   state: string;
-  priority: number | null;
+  priority: IssuePriority | null;
   description: string | null;
   branchName: string | null;
   url: string | null;
@@ -28,6 +39,11 @@ export interface KanbanIssue {
   updatedAt: string | null;
   createdAt: string | null;
 }
+
+type GraphqlIssue = Omit<KanbanIssue, "state" | "labels"> & {
+  state: { name: string };
+  labels: { nodes: KanbanIssue["labels"] };
+};
 
 export interface ProjectWorkspace {
   kind: "local" | "remote";
@@ -75,7 +91,7 @@ export async function fetchProjects(): Promise<ProjectRecord[]> {
 
 export async function fetchIssues(projectSlug: string, stateNames: string[]): Promise<KanbanIssue[]> {
   const data = await request<{
-    issues: { nodes: Array<Omit<KanbanIssue, "state"> & { state: { name: string } }> };
+    issues: { nodes: GraphqlIssue[] };
   }>(
     `query Issues($stateNames: [String!]!, $projectSlug: String!) {
       issues(filter: { state: { name: { in: $stateNames } }, project: { slugId: { eq: $projectSlug } } }, first: 100) {
@@ -88,7 +104,7 @@ export async function fetchIssues(projectSlug: string, stateNames: string[]): Pr
     }`,
     { stateNames, projectSlug },
   );
-  return data.issues.nodes.map((n) => ({ ...n, state: n.state.name }));
+  return data.issues.nodes.map(normalizeIssue);
 }
 
 export async function updateIssueState(id: string, stateName: string): Promise<void> {
@@ -105,11 +121,14 @@ export async function createIssue(input: {
   description: string;
   stateName: string;
   projectSlug: string;
+  priority: IssuePriority | null;
+  branchName: string | null;
+  labels: string[];
 }): Promise<KanbanIssue | null> {
   const data = await request<{
     issueCreate: {
       success: boolean;
-      issue: (Omit<KanbanIssue, "state"> & { state: { name: string } }) | null;
+      issue: GraphqlIssue | null;
     };
   }>(
     `mutation CreateIssue($input: IssueCreateInput!) {
@@ -126,7 +145,15 @@ export async function createIssue(input: {
   );
   const issue = data.issueCreate.issue;
   if (!issue) return null;
-  return { ...issue, state: issue.state.name };
+  return normalizeIssue(issue);
+}
+
+function normalizeIssue(issue: GraphqlIssue): KanbanIssue {
+  return {
+    ...issue,
+    state: issue.state.name,
+    labels: Array.isArray(issue.labels?.nodes) ? issue.labels.nodes : [],
+  };
 }
 
 export async function createProject(input: {

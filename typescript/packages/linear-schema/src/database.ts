@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
+import type { IssuePriority } from '@symphony/core';
 import type {
   CreateIssueInput,
   CreateProjectInput,
@@ -26,7 +27,7 @@ export function createSqliteStore(path: string): LocalLinearStore {
       identifier text not null unique,
       title text not null,
       description text,
-      priority integer,
+      priority text,
       state text not null,
       project_slug text not null,
       branch_name text,
@@ -129,12 +130,12 @@ export function createSqliteStore(path: string): LocalLinearStore {
         identifier: input.identifier,
         title: input.title,
         description: input.description ?? null,
-        priority: null,
+        priority: input.priority ?? null,
         state: input.state,
         projectSlug: input.projectSlug,
-        branchName: null,
+        branchName: input.branchName ?? null,
         url: `http://localhost:3001/issues/${input.identifier}`,
-        labels: [],
+        labels: input.labels ?? [],
         createdAt: now,
         updatedAt: now,
       };
@@ -208,7 +209,7 @@ interface SqliteIssueRow {
   identifier: string;
   title: string;
   description: string | null;
-  priority: number | null;
+  priority: IssuePriority | null;
   state: string;
   project_slug: string;
   branch_name: string | null;

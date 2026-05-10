@@ -1,4 +1,4 @@
-import type { Issue } from "@symphony/core";
+import { issuePriorityWeight, type Issue } from "@symphony/core";
 import type { RunProgressStatus } from "./run-progress.js";
 import type { Tracker } from "./tracker.js";
 
@@ -134,9 +134,9 @@ function retryDelay(attempt: number, maxRetryBackoffMs = 300000): number {
 
 function sortIssues(issues: Issue[]): Issue[] {
   return [...issues].sort((a, b) => {
-    const priorityA = a.priority ?? Number.MAX_SAFE_INTEGER;
-    const priorityB = b.priority ?? Number.MAX_SAFE_INTEGER;
-    if (priorityA !== priorityB) return priorityA - priorityB;
+    const priorityA = issuePriorityWeight(a.priority);
+    const priorityB = issuePriorityWeight(b.priority);
+    if (priorityA !== priorityB) return priorityB - priorityA;
     const createdA = a.createdAt ?? "";
     const createdB = b.createdAt ?? "";
     if (createdA !== createdB) return createdA.localeCompare(createdB);

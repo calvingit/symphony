@@ -1,4 +1,5 @@
 import type { LocalIssue, LocalProjectWorkspace } from './store.js';
+import { normalizeIssuePriority, normalizeLabels } from '@symphony/core';
 
 export const resolvers = {
   Query: {
@@ -67,8 +68,11 @@ export const resolvers = {
         input: {
           title: string;
           description?: string | null;
+          priority?: string | null;
           stateName: string;
           projectSlug: string;
+          branchName?: string | null;
+          labels?: string[] | null;
         };
       },
       context: any,
@@ -81,8 +85,18 @@ export const resolvers = {
           typeof args.input.description === 'string'
             ? args.input.description
             : (args.input.description ?? null),
+        priority: parsePriorityInput(args.input.priority, { allowUndefined: false }),
         state: args.input.stateName,
         projectSlug: args.input.projectSlug,
+        branchName:
+          typeof args.input.branchName === 'string' && args.input.branchName.trim()
+            ? args.input.branchName.trim()
+            : null,
+        labels: Array.isArray(args.input.labels)
+          ? normalizeLabels(
+              args.input.labels.filter((label): label is string => typeof label === 'string'),
+            )
+          : [],
       });
       return { success: Boolean(issue), issue };
     },
@@ -96,11 +110,13 @@ export const resolvers = {
         description:
           typeof args.input.description === 'string' ? args.input.description : undefined,
         state: typeof args.input.stateName === 'string' ? args.input.stateName : undefined,
-        priority: Number.isInteger(args.input.priority) ? Number(args.input.priority) : undefined,
+        priority: parsePriorityInput(args.input.priority, { allowUndefined: true }),
         branchName: typeof args.input.branchName === 'string' ? args.input.branchName : undefined,
         url: typeof args.input.url === 'string' ? args.input.url : undefined,
         labels: Array.isArray(args.input.labels)
-          ? args.input.labels.filter((label): label is string => typeof label === 'string')
+          ? normalizeLabels(
+              args.input.labels.filter((label): label is string => typeof label === 'string'),
+            )
           : undefined,
       });
       return { success: Boolean(issue), issue };
@@ -180,4 +196,24 @@ function fallbackWorkspace(): LocalProjectWorkspace {
     remoteUrl: null,
     baseBranch: 'main',
   };
+}
+
+function parsePriorityInput(
+  value: unknown,
+  options: { allowUndefined: boolean },
+): string | null | undefined {
+  if (value === undefined) {
+    return options.allowUndefined ? undefined : null;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new Error('issue_priority_invalid');
+  }
+  const normalized = normalizeIssuePriority(value);
+  if (!normalized) {
+    throw new Error('issue_priority_invalid');
+  }
+  return normalized;
 }

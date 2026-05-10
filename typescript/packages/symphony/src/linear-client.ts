@@ -1,4 +1,4 @@
-import type { Issue } from "@symphony/core";
+import { normalizeIssuePriority, normalizeLabels, type Issue } from "@symphony/core";
 
 export class LinearClient {
   constructor(
@@ -110,11 +110,13 @@ function normalizeIssue(node: any): Issue {
     identifier: String(node.identifier),
     title: String(node.title),
     description: typeof node.description === "string" ? node.description : null,
-    priority: Number.isInteger(node.priority) ? node.priority : null,
+    priority: normalizeIssuePriority(node.priority),
     state: String(node.state?.name),
     branchName: typeof node.branchName === "string" ? node.branchName : null,
     url: typeof node.url === "string" ? node.url : null,
-    labels: Array.isArray(node.labels?.nodes) ? node.labels.nodes.map((label: any) => String(label.name).toLowerCase()) : [],
+    labels: Array.isArray(node.labels?.nodes)
+      ? normalizeLabels(node.labels.nodes.map((label: any) => String(label.name)))
+      : [],
     blockedBy: [],
     project:
       node.project && typeof node.project.slugId === "string"
