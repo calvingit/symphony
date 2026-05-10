@@ -17,6 +17,7 @@ export default function Page() {
 function IssuesPageContent() {
   const {
     isLoading,
+    loadProjects,
     loadIssues,
     loadRuns,
     projects,
@@ -24,18 +25,40 @@ function IssuesPageContent() {
     selectProject,
   } = useKanbanStore();
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [projectsResolved, setProjectsResolved] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const projectFromUrl = searchParams.get("project");
-  const requiresProject = projects.length === 0;
+  const requiresProject = projectsResolved && projects.length === 0;
 
   useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        await loadProjects();
+      } finally {
+        if (!cancelled) {
+          setProjectsResolved(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadProjects]);
+
+  useEffect(() => {
+    if (!projectsResolved) {
+      return;
+    }
     if (!projectFromUrl || projectFromUrl === selectedProjectSlug) {
       return;
     }
     selectProject(projectFromUrl);
-  }, [projectFromUrl, selectedProjectSlug, selectProject]);
+  }, [projectFromUrl, projectsResolved, selectedProjectSlug, selectProject]);
 
   const hasProjectInList = useMemo(
     () =>
@@ -46,6 +69,9 @@ function IssuesPageContent() {
   );
 
   useEffect(() => {
+    if (!projectsResolved) {
+      return;
+    }
     if (projects.length === 0 || !selectedProjectSlug) {
       return;
     }
@@ -64,6 +90,7 @@ function IssuesPageContent() {
     pathname,
     projectFromUrl,
     projects.length,
+    projectsResolved,
     router,
     selectedProjectSlug,
   ]);
@@ -84,17 +111,31 @@ function IssuesPageContent() {
         onProjectChange={selectProject}
         onManageProjects={() => setProjectsOpen(true)}
       />
-      <KanbanBoard
-        projectsOpen={requiresProject || projectsOpen}
-        projectsRequired={requiresProject}
-        onProjectsClose={() => {
-          if (requiresProject) {
-            return;
-          }
-          setProjectsOpen(false);
-        }}
-      />
+      {!projectsResolved ? (
+        <ProjectsLoadingState />
+      ) : (
+        <KanbanBoard
+          projectsOpen={requiresProject || projectsOpen}
+          projectsRequired={requiresProject}
+          onProjectsClose={() => {
+            if (requiresProject) {
+              return;
+            }
+            setProjectsOpen(false);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function ProjectsLoadingState() {
+  return (
+    <main className="flex flex-1 items-center justify-center px-6">
+      <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 text-sm text-gray-500 shadow-sm">
+        Loading projects...
+      </div>
+    </main>
   );
 }
 

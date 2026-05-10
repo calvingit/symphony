@@ -64,7 +64,6 @@ export function resolveConfig(raw: unknown, context: ResolveConfigContext): Effe
       activeStates: readStringArray(tracker.active_states) ?? ['Todo', 'In Progress'],
       terminalStates: readStringArray(tracker.terminal_states) ?? [
         'Closed',
-        'Cancelled',
         'Canceled',
         'Duplicate',
         'Done',

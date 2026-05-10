@@ -23,7 +23,7 @@ describe("resolveConfig", () => {
     expect(config.tracker.endpoint).toBe("https://api.linear.app/graphql");
     expect(config.tracker.apiKey).toBe("token-1");
     expect(config.tracker.activeStates).toEqual(["Todo", "In Progress"]);
-    expect(config.tracker.terminalStates).toEqual(["Closed", "Cancelled", "Canceled", "Duplicate", "Done"]);
+    expect(config.tracker.terminalStates).toEqual(['Closed', 'Canceled', 'Duplicate', 'Done']);
     expect(config.polling.intervalMs).toBe(30000);
     expect(config.hooks).toEqual({
       afterCreate: null,

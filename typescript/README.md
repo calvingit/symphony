@@ -75,8 +75,8 @@ If SQLite cannot initialize in the current runtime, the tracker falls back to a 
 The web UI at `http://localhost:3001/` provides a drag-and-drop Kanban board matching Linear's
 design:
 
-- **Columns** — Backlog, Todo, In Progress, Human Review (default visible), plus Done, Cancelled,
-  Canceled, Duplicate, Closed (hidden by default)
+- **Columns** — Backlog, Todo, In Progress, Human Review (default visible), plus Done, Canceled,
+  Duplicate, Closed (hidden by default)
 - **Task cards** — identifier (monospace), title (2-line clamp), state color dot, priority indicator,
   "Updated" date
 - **Drag & drop** — `PointerSensor` with 5 px activation distance, visual overlay on drag

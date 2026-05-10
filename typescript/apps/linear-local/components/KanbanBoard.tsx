@@ -35,14 +35,12 @@ export function KanbanBoard(props: {
     issueDetailsById,
     issueDetailsLoading,
     issueDetailsError,
-    loadProjects,
     loadIssues,
     loadRuns,
     openIssueDetails,
     closeIssueDetails,
     moveIssue,
     addIssue,
-    selectProject,
     addProject,
     editProject,
     removeProject,
@@ -56,14 +54,19 @@ export function KanbanBoard(props: {
   );
 
   useEffect(() => {
-    void loadProjects();
-    loadRuns();
+    if (!selectedProjectSlug) {
+      return;
+    }
     const timer = window.setInterval(() => {
-      void loadProjects();
-      loadRuns();
+      void loadIssues({ silent: true });
+      void loadRuns();
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [loadProjects, loadRuns]);
+  }, [loadIssues, loadRuns, selectedProjectSlug]);
+
+  useEffect(() => {
+    void loadRuns();
+  }, [loadRuns]);
 
   useEffect(() => {
     void loadIssues();

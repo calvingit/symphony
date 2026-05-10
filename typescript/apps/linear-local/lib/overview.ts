@@ -8,13 +8,12 @@ export const OVERVIEW_STATE_ORDER = [
   "Human Review",
   "Merging",
   "Done",
-  "Cancelled",
   "Canceled",
   "Duplicate",
   "Closed",
 ] as const;
 
-const TERMINAL_STATES = new Set(["Done", "Cancelled", "Canceled", "Duplicate", "Closed"]);
+const TERMINAL_STATES = new Set(["Done", "Canceled", "Duplicate", "Closed"]);
 const ATTENTION_STATES = new Set(["Rework", "Human Review", "Merging"]);
 const RUNNING_STATUSES = new Set([
   "claimed",

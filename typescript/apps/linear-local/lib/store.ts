@@ -28,7 +28,6 @@ export const COLUMNS = [
   { id: "Human Review", label: "Human Review", color: "#8b5cf6" },
   { id: "Merging", label: "Merging", color: "#14b8a6" },
   { id: "Done", label: "Done", color: "#22c55e" },
-  { id: "Cancelled", label: "Cancelled", color: "#9b9b9b" },
   { id: "Canceled", label: "Canceled", color: "#9b9b9b" },
   { id: "Duplicate", label: "Duplicate", color: "#9b9b9b" },
   { id: "Closed", label: "Closed", color: "#9b9b9b" },
@@ -49,7 +48,7 @@ interface KanbanStore {
   issueDetailsError: string | null;
   isLoading: boolean;
   loadProjects: () => Promise<void>;
-  loadIssues: () => Promise<void>;
+  loadIssues: (options?: { silent?: boolean }) => Promise<void>;
   loadRuns: () => Promise<void>;
   loadIssueDetails: (issueId: string) => Promise<void>;
   moveIssue: (issueId: string, newState: string) => Promise<void>;
@@ -96,13 +95,16 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
     set({ projects, selectedProjectSlug: nextSelected });
   },
 
-  loadIssues: async () => {
+  loadIssues: async (options) => {
     const projectSlug = get().selectedProjectSlug;
     if (!projectSlug) {
       set({ issues: [], isLoading: false });
       return;
     }
-    set({ isLoading: true });
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      set({ isLoading: true });
+    }
     const allStates = COLUMNS.map((c) => c.id);
     const issues = await fetchIssues(projectSlug, allStates);
     set({ issues, isLoading: false });

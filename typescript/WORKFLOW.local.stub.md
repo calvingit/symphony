@@ -10,7 +10,6 @@ tracker:
     - Merging
   terminal_states:
     - Closed
-    - Cancelled
     - Canceled
     - Duplicate
     - Done

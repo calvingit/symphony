@@ -22,7 +22,6 @@ const STATE_ICONS: Record<string, string> = {
   'Human Review': '#8b5cf6',
   Merging: '#14b8a6',
   Done: '#22c55e',
-  Cancelled: '#9b9b9b',
   Canceled: '#9b9b9b',
   Duplicate: '#9b9b9b',
   Closed: '#9b9b9b',
