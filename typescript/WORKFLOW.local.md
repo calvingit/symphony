@@ -21,7 +21,7 @@ workspace:
   root: ./tmp/workspaces
 hooks:
   after_create: |
-    printf 'workspace ready\n' > .symphony-workspace
+    set -euo pipefail
     if [ ! -d .git ]; then
       if [ "${SYMPHONY_PROJECT_WORKSPACE_KIND:-}" = "local" ] && [ -n "${SYMPHONY_PROJECT_LOCAL_PATH:-}" ]; then
         git clone "$SYMPHONY_PROJECT_LOCAL_PATH" .
@@ -32,13 +32,20 @@ hooks:
         exit 1
       fi
     fi
+    if [ "$(git rev-parse --show-toplevel)" != "$PWD" ]; then
+      echo "workspace git root mismatch: $(git rev-parse --show-toplevel)" >&2
+      exit 1
+    fi
     TARGET_BRANCH="${SYMPHONY_ISSUE_BRANCH_NAME:-${SYMPHONY_PROJECT_BASE_BRANCH:-main}}"
     if [ -n "${TARGET_BRANCH:-}" ]; then
       git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH" 2>/dev/null || git checkout -B "$TARGET_BRANCH"
     fi
+    printf 'workspace ready\n' > .symphony-workspace
   before_run: |
-    if [ ! -d .git ]; then
-      echo "workspace is not a git repo: $PWD" >&2
+    set -euo pipefail
+    TOPLEVEL="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [ "${TOPLEVEL:-}" != "$PWD" ]; then
+      echo "workspace is not a git repo root: $PWD" >&2
       exit 1
     fi
     TARGET_BRANCH="${SYMPHONY_ISSUE_BRANCH_NAME:-${SYMPHONY_PROJECT_BASE_BRANCH:-main}}"

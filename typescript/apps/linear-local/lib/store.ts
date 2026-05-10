@@ -24,7 +24,9 @@ export const COLUMNS = [
   { id: "Backlog", label: "Backlog", color: "#6b6b6b" },
   { id: "Todo", label: "Todo", color: "#e2b73b" },
   { id: "In Progress", label: "In Progress", color: "#3b82f6" },
+  { id: "Rework", label: "Rework", color: "#f97316" },
   { id: "Human Review", label: "Human Review", color: "#8b5cf6" },
+  { id: "Merging", label: "Merging", color: "#14b8a6" },
   { id: "Done", label: "Done", color: "#22c55e" },
   { id: "Cancelled", label: "Cancelled", color: "#9b9b9b" },
   { id: "Canceled", label: "Canceled", color: "#9b9b9b" },
@@ -32,7 +34,7 @@ export const COLUMNS = [
   { id: "Closed", label: "Closed", color: "#9b9b9b" },
 ];
 
-const DEFAULT_VISIBLE = ["Backlog", "Todo", "In Progress", "Human Review"];
+const DEFAULT_VISIBLE = ["Todo", "In Progress", "Rework", "Human Review", "Merging"];
 
 interface KanbanStore {
   projects: ProjectRecord[];

@@ -37,8 +37,9 @@ export async function runAgentAttempt(input: {
       timeoutMs: input.config.hooks.timeoutMs,
     });
     if (!afterCreate.ok) {
-      emit('failed', { error: 'after_create hook failed' });
-      return { status: 'failed', error: 'after_create hook failed' };
+      const error = formatHookFailure('after_create', afterCreate);
+      emit('failed', { error });
+      return { status: 'failed', error };
     }
   }
 
@@ -50,8 +51,9 @@ export async function runAgentAttempt(input: {
     timeoutMs: input.config.hooks.timeoutMs,
   });
   if (!beforeRun.ok) {
-    emit('failed', { error: 'before_run hook failed' });
-    return { status: 'failed', error: 'before_run hook failed' };
+    const error = formatHookFailure('before_run', beforeRun);
+    emit('failed', { error });
+    return { status: 'failed', error };
   }
 
   const prompt = await renderPrompt(input.workflowPrompt, {
@@ -419,4 +421,34 @@ function firstString(...values: unknown[]): string | null {
 
 function truncate(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength - 3)}...`;
+}
+
+function formatHookFailure(
+  hookName: string,
+  result: {
+    exitCode: number | null;
+    stdout: string;
+    stderr: string;
+    timedOut: boolean;
+  },
+): string {
+  const output = firstNonEmptyLine(result.stderr) ?? firstNonEmptyLine(result.stdout);
+  const suffix = output
+    ? `: ${truncate(output, 200)}`
+    : result.timedOut
+      ? ' (timed out)'
+      : result.exitCode === null
+        ? ''
+        : ` (exit ${result.exitCode})`;
+  return `${hookName} hook failed${suffix}`;
+}
+
+function firstNonEmptyLine(value: string): string | null {
+  for (const line of value.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return null;
 }

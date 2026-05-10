@@ -188,6 +188,30 @@ done
       `${workspacePath}\nLOC-12\nfeature/loc-12\nrepo-loc-12\ngit@example.com:repo-loc-12.git\n3`,
     );
   });
+
+  it('surfaces hook stderr in the failed run error', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'symphony-agent-hook-failure-'));
+    const result = await runAgentAttempt({
+      issue: issue('LOC-13'),
+      attempt: null,
+      workflowPrompt: 'Work on {{ issue.identifier }}',
+      config: {
+        ...config(root, "printf 'should not run\\n'"),
+        hooks: {
+          afterCreate: 'echo "workspace is not a git repo root: $PWD" >&2; exit 1',
+          beforeRun: null,
+          afterRun: null,
+          beforeRemove: null,
+          timeoutMs: 1000,
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      status: 'failed',
+      error: expect.stringContaining('after_create hook failed: workspace is not a git repo root:'),
+    });
+  });
 });
 
 function issue(identifier: string): Issue {
