@@ -1,6 +1,8 @@
 import type { LocalIssue, LocalProjectWorkspace } from './store.js';
 import { normalizeIssuePriority, normalizeLabels } from '@symphony/core';
 
+const BLOCKED_BY_RELATION = 'blocked_by';
+
 export const resolvers = {
   Query: {
     projects: async (_parent: unknown, _args: unknown, context: any) =>
@@ -133,6 +135,25 @@ export const resolvers = {
       const comment = await context.store.updateComment(args.id, args.body);
       return { success: Boolean(comment), comment };
     },
+    issueRelationCreate: async (
+      _parent: unknown,
+      args: { issueId: string; relatedIssueId: string; type: string },
+      context: any,
+    ) => {
+      const type = normalizeRelationType(args.type);
+      if (args.issueId === args.relatedIssueId) {
+        throw new Error('issue_relation_self_reference_invalid');
+      }
+      const relation = await context.store.createIssueRelation({
+        issueId: args.issueId,
+        relatedIssueId: args.relatedIssueId,
+        type,
+      });
+      return {
+        success: Boolean(relation),
+        relation: relation ? await hydrateRelation(context, relation) : null,
+      };
+    },
   },
   Issue: {
     state: (issue: LocalIssue) => ({
@@ -154,7 +175,15 @@ export const resolvers = {
     labels: (issue: LocalIssue) => ({
       nodes: issue.labels.map((name) => ({ id: `label-${name}`, name })),
     }),
-    relations: () => ({ nodes: [] }),
+    relations: async (issue: LocalIssue, _args: unknown, context: any) => ({
+      nodes: (
+        await Promise.all(
+          (await context.store.listRelationsByIssueId(issue.id)).map((relation: any) =>
+            hydrateRelation(context, relation),
+          ),
+        )
+      ).filter(Boolean),
+    }),
     comments: async (issue: LocalIssue, _args: unknown, context: any) => ({
       nodes: await context.store.listCommentsByIssueId(issue.id),
     }),
@@ -216,4 +245,29 @@ function parsePriorityInput(
     throw new Error('issue_priority_invalid');
   }
   return normalized;
+}
+
+function normalizeRelationType(value: string): string {
+  if (value !== BLOCKED_BY_RELATION) {
+    throw new Error('issue_relation_type_invalid');
+  }
+  return value;
+}
+
+async function hydrateRelation(
+  context: any,
+  relation: { id: string; issueId: string; relatedIssueId: string; type: string },
+): Promise<{ id: string; type: string; issue: LocalIssue; relatedIssue: LocalIssue } | null> {
+  const issues = await context.store.getIssuesByIds([relation.issueId, relation.relatedIssueId]);
+  const issue = issues.find((item: LocalIssue) => item.id === relation.issueId);
+  const relatedIssue = issues.find((item: LocalIssue) => item.id === relation.relatedIssueId);
+  if (!issue || !relatedIssue) {
+    return null;
+  }
+  return {
+    id: relation.id,
+    type: relation.type,
+    issue,
+    relatedIssue,
+  };
 }

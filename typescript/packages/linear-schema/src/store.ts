@@ -30,6 +30,14 @@ export interface LocalIssue {
   updatedAt: string;
 }
 
+export interface LocalIssueRelation {
+  id: string;
+  issueId: string;
+  relatedIssueId: string;
+  type: string;
+  createdAt: string;
+}
+
 export interface CreateIssueInput {
   identifier: string;
   title: string;
@@ -64,12 +72,19 @@ export interface LocalLinearStore {
   createComment(issueId: string, body: string): Promise<{ id: string; issueId: string; body: string; createdAt: string; updatedAt: string } | null>;
   updateComment(id: string, body: string): Promise<{ id: string; issueId: string; body: string; createdAt: string; updatedAt: string } | null>;
   listCommentsByIssueId(issueId: string): Promise<Array<{ id: string; issueId: string; body: string; createdAt: string; updatedAt: string }>>;
+  createIssueRelation(input: {
+    issueId: string;
+    relatedIssueId: string;
+    type: string;
+  }): Promise<LocalIssueRelation | null>;
+  listRelationsByIssueId(issueId: string): Promise<LocalIssueRelation[]>;
 }
 
 export function createInMemoryStore(): LocalLinearStore {
   const projects = new Map<string, LocalProject>();
   const issues = new Map<string, LocalIssue>();
   const comments = new Map<string, { id: string; issueId: string; body: string; createdAt: string; updatedAt: string }>();
+  const relations = new Map<string, LocalIssueRelation>();
 
   return {
     async seedDefaultProject(slugId) {
@@ -124,6 +139,14 @@ export function createInMemoryStore(): LocalLinearStore {
       for (const [commentId, comment] of comments.entries()) {
         if (deletedIssueIds.includes(comment.issueId)) {
           comments.delete(commentId);
+        }
+      }
+      for (const [relationId, relation] of relations.entries()) {
+        if (
+          deletedIssueIds.includes(relation.issueId) ||
+          deletedIssueIds.includes(relation.relatedIssueId)
+        ) {
+          relations.delete(relationId);
         }
       }
       return true;
@@ -192,6 +215,32 @@ export function createInMemoryStore(): LocalLinearStore {
     },
     async listCommentsByIssueId(issueId) {
       return [...comments.values()].filter((comment) => comment.issueId === issueId);
+    },
+    async createIssueRelation(input) {
+      if (!issues.has(input.issueId) || !issues.has(input.relatedIssueId)) {
+        return null;
+      }
+      const existing = [...relations.values()].find(
+        (relation) =>
+          relation.issueId === input.issueId &&
+          relation.relatedIssueId === input.relatedIssueId &&
+          relation.type === input.type,
+      );
+      if (existing) return existing;
+      const relation: LocalIssueRelation = {
+        id: randomUUID(),
+        issueId: input.issueId,
+        relatedIssueId: input.relatedIssueId,
+        type: input.type,
+        createdAt: new Date().toISOString(),
+      };
+      relations.set(relation.id, relation);
+      return relation;
+    },
+    async listRelationsByIssueId(issueId) {
+      return [...relations.values()].filter(
+        (relation) => relation.issueId === issueId || relation.relatedIssueId === issueId,
+      );
     },
   };
 }

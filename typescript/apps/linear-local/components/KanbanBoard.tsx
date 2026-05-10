@@ -26,9 +26,16 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
     issues,
     visibleColumns,
     runs,
+    runEvents,
+    selectedIssueId,
+    issueDetailsById,
+    issueDetailsLoading,
+    issueDetailsError,
     loadProjects,
     loadIssues,
     loadRuns,
+    openIssueDetails,
+    closeIssueDetails,
     moveIssue,
     addIssue,
     selectProject,
@@ -40,7 +47,6 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
 
   const [activeIssue, setActiveIssue] = useState<KanbanIssue | null>(null);
   const [createColumn, setCreateColumn] = useState<string | null>(null);
-  const [selectedIssue, setSelectedIssue] = useState<KanbanIssue | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -99,6 +105,7 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
   const visibleColumnDefs = COLUMNS.filter((c: { id: string }) => visibleColumns.includes(c.id));
   const selectedProject =
     projects.find((project) => project.slugId === selectedProjectSlug) ?? null;
+  const selectedIssue = selectedIssueId ? issueDetailsById[selectedIssueId] ?? null : null;
 
   return (
     <>
@@ -113,7 +120,9 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
                   issues={issues.filter((i: KanbanIssue) => i.state === col.id)}
                   runs={runs}
                   onCreateClick={setCreateColumn}
-                  onIssueClick={setSelectedIssue}
+                  onIssueClick={(issue) => {
+                    void openIssueDetails(issue.id);
+                  }}
                 />
               ))}
             </div>
@@ -150,8 +159,12 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
 
       <IssueDetailsDialog
         issue={selectedIssue}
-        run={selectedIssue ? runs[selectedIssue.id] : undefined}
-        onClose={() => setSelectedIssue(null)}
+        issueId={selectedIssueId}
+        run={selectedIssueId ? runs[selectedIssueId] : undefined}
+        runEvents={selectedIssueId ? runEvents.filter((event) => event.issueId === selectedIssueId) : []}
+        isLoading={issueDetailsLoading}
+        error={issueDetailsError}
+        onClose={closeIssueDetails}
       />
     </>
   );

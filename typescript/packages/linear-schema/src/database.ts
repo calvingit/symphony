@@ -5,6 +5,7 @@ import type {
   CreateIssueInput,
   CreateProjectInput,
   LocalIssue,
+  LocalIssueRelation,
   LocalLinearStore,
   LocalProject,
   LocalProjectWorkspace,
@@ -42,6 +43,14 @@ export function createSqliteStore(path: string): LocalLinearStore {
       body text not null,
       created_at text not null,
       updated_at text not null
+    );
+    create table if not exists issue_relations (
+      id text primary key,
+      issue_id text not null,
+      related_issue_id text not null,
+      type text not null,
+      created_at text not null,
+      unique(issue_id, related_issue_id, type)
     );
   `);
 
@@ -112,6 +121,9 @@ export function createSqliteStore(path: string): LocalLinearStore {
         db.prepare(
           `delete from comments where issue_id in (${issueIds.map(() => "?").join(",")})`,
         ).run(...issueIds.map((row) => row.id));
+        db.prepare(
+          `delete from issue_relations where issue_id in (${issueIds.map(() => "?").join(",")}) or related_issue_id in (${issueIds.map(() => "?").join(",")})`,
+        ).run(...issueIds.map((row) => row.id), ...issueIds.map((row) => row.id));
       }
       db.prepare("delete from issues where project_slug = ?").run(slugId);
       const result = db.prepare("delete from projects where slug_id = ?").run(slugId);
@@ -201,6 +213,46 @@ export function createSqliteStore(path: string): LocalLinearStore {
         updatedAt: row.updated_at,
       }));
     },
+    async createIssueRelation(input) {
+      const issue = db.prepare("select id from issues where id = ?").get(input.issueId) as
+        | { id: string }
+        | undefined;
+      const relatedIssue = db.prepare("select id from issues where id = ?").get(input.relatedIssueId) as
+        | { id: string }
+        | undefined;
+      if (!issue || !relatedIssue) {
+        return null;
+      }
+      const existing = db.prepare(
+        "select * from issue_relations where issue_id = ? and related_issue_id = ? and type = ?",
+      ).get(input.issueId, input.relatedIssueId, input.type) as SqliteIssueRelationRow | undefined;
+      if (existing) {
+        return rowToIssueRelation(existing);
+      }
+      const relation: LocalIssueRelation = {
+        id: randomUUID(),
+        issueId: input.issueId,
+        relatedIssueId: input.relatedIssueId,
+        type: input.type,
+        createdAt: new Date().toISOString(),
+      };
+      db.prepare(
+        "insert into issue_relations (id, issue_id, related_issue_id, type, created_at) values (?, ?, ?, ?, ?)",
+      ).run(
+        relation.id,
+        relation.issueId,
+        relation.relatedIssueId,
+        relation.type,
+        relation.createdAt,
+      );
+      return relation;
+    },
+    async listRelationsByIssueId(issueId) {
+      const rows = db.prepare(
+        "select * from issue_relations where issue_id = ? or related_issue_id = ? order by created_at asc",
+      ).all(issueId, issueId) as SqliteIssueRelationRow[];
+      return rows.map(rowToIssueRelation);
+    },
   };
 }
 
@@ -236,6 +288,14 @@ interface SqliteCommentRow {
   updated_at: string;
 }
 
+interface SqliteIssueRelationRow {
+  id: string;
+  issue_id: string;
+  related_issue_id: string;
+  type: string;
+  created_at: string;
+}
+
 function rowToIssue(row: SqliteIssueRow): LocalIssue {
   return {
     id: row.id,
@@ -264,6 +324,16 @@ function rowToProject(row: SqliteProjectRow): LocalProject {
       remoteUrl: row.remote_url,
       baseBranch: row.base_branch,
     },
+  };
+}
+
+function rowToIssueRelation(row: SqliteIssueRelationRow): LocalIssueRelation {
+  return {
+    id: row.id,
+    issueId: row.issue_id,
+    relatedIssueId: row.related_issue_id,
+    type: row.type,
+    createdAt: row.created_at,
   };
 }
 

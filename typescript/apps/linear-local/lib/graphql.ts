@@ -59,6 +59,33 @@ export interface ProjectRecord {
   workspace: ProjectWorkspace;
 }
 
+export interface IssueComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueRelationIssueRef {
+  id: string;
+  identifier: string;
+  title: string;
+  state: string;
+}
+
+export interface IssueRelation {
+  id: string;
+  type: string;
+  issue: IssueRelationIssueRef;
+  relatedIssue: IssueRelationIssueRef;
+}
+
+export interface IssueDetails extends KanbanIssue {
+  project: ProjectRecord | null;
+  comments: IssueComment[];
+  relations: IssueRelation[];
+}
+
 export interface RunProgress {
   issueId: string;
   identifier: string;
@@ -74,6 +101,43 @@ export interface RunProgress {
   updatedAt: string;
   finishedAt: string | null;
 }
+
+export interface RunProgressEvent {
+  id: number;
+  issueId: string;
+  identifier: string;
+  title: string;
+  attempt: number | null;
+  status: string;
+  message: string | null;
+  error: string | null;
+  threadId: string | null;
+  turnId: string | null;
+  toolName: string | null;
+  eventName: string | null;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+interface GraphqlIssueRelationIssueRef {
+  id: string;
+  identifier: string;
+  title: string;
+  state: { name: string };
+}
+
+interface GraphqlIssueRelation {
+  id: string;
+  type: string;
+  issue: GraphqlIssueRelationIssueRef;
+  relatedIssue: GraphqlIssueRelationIssueRef;
+}
+
+type GraphqlIssueDetails = GraphqlIssue & {
+  project: ProjectRecord | null;
+  comments: { nodes: IssueComment[] };
+  relations: { nodes: GraphqlIssueRelation[] };
+};
 
 export async function fetchProjects(): Promise<ProjectRecord[]> {
   const data = await request<{ projects: ProjectRecord[] }>(`
@@ -148,11 +212,65 @@ export async function createIssue(input: {
   return normalizeIssue(issue);
 }
 
+export async function fetchIssueDetails(id: string): Promise<IssueDetails | null> {
+  const data = await request<{ issue: GraphqlIssueDetails | null }>(
+    `query IssueDetails($id: ID!) {
+      issue(id: $id) {
+        id identifier title state { name } priority description branchName url
+        labels { nodes { name } }
+        project {
+          id
+          slugId
+          name
+          workspace { kind localPath remoteUrl baseBranch }
+        }
+        comments { nodes { id body createdAt updatedAt } }
+        relations {
+          nodes {
+            id
+            type
+            issue { id identifier title state { name } }
+            relatedIssue { id identifier title state { name } }
+          }
+        }
+        updatedAt createdAt
+      }
+    }`,
+    { id },
+  );
+  return data.issue ? normalizeIssueDetails(data.issue) : null;
+}
+
 function normalizeIssue(issue: GraphqlIssue): KanbanIssue {
   return {
     ...issue,
     state: issue.state.name,
     labels: Array.isArray(issue.labels?.nodes) ? issue.labels.nodes : [],
+  };
+}
+
+function normalizeIssueDetails(issue: GraphqlIssueDetails): IssueDetails {
+  return {
+    ...normalizeIssue(issue),
+    project: issue.project ?? null,
+    comments: Array.isArray(issue.comments?.nodes) ? issue.comments.nodes : [],
+    relations: Array.isArray(issue.relations?.nodes)
+      ? issue.relations.nodes.map((relation) => ({
+          id: relation.id,
+          type: relation.type,
+          issue: normalizeIssueRelationRef(relation.issue),
+          relatedIssue: normalizeIssueRelationRef(relation.relatedIssue),
+        }))
+      : [],
+  };
+}
+
+function normalizeIssueRelationRef(issue: GraphqlIssueRelationIssueRef): IssueRelationIssueRef {
+  return {
+    id: issue.id,
+    identifier: issue.identifier,
+    title: issue.title,
+    state: issue.state.name,
   };
 }
 
@@ -209,9 +327,15 @@ export async function deleteProject(slugId: string): Promise<boolean> {
   return Boolean(data.projectDelete.success);
 }
 
-export async function fetchRunProgress(): Promise<RunProgress[]> {
+export async function fetchRunProgress(): Promise<{
+  runs: RunProgress[];
+  events: RunProgressEvent[];
+}> {
   const response = await fetch("/api/runs", { cache: "no-store" });
-  if (!response.ok) return [];
+  if (!response.ok) return { runs: [], events: [] };
   const body = await response.json();
-  return Array.isArray(body.runs) ? body.runs : [];
+  return {
+    runs: Array.isArray(body.runs) ? body.runs : [],
+    events: Array.isArray(body.events) ? body.events : [],
+  };
 }

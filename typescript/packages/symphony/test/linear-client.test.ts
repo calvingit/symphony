@@ -4,7 +4,7 @@ import { LinearClient } from "../src/linear-client.js";
 describe("LinearClient", () => {
   it("fetches candidates through the configured endpoint", async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({
-      data: { issues: { nodes: [{ id: "1", identifier: "LOC-1", title: "Work", description: null, priority: "high", state: { name: "Todo" }, project: { slugId: "symphony-local" }, labels: { nodes: [] }, relations: { nodes: [] }, createdAt: null, updatedAt: null }], pageInfo: { hasNextPage: false, endCursor: null } } },
+      data: { issues: { nodes: [{ id: "1", identifier: "LOC-1", title: "Work", description: null, priority: "high", state: { name: "Todo" }, project: { slugId: "symphony-local" }, labels: { nodes: [] }, relations: { nodes: [{ type: "blocked_by", issue: { id: "1" }, relatedIssue: { id: "2", identifier: "LOC-2", state: { name: "In Progress" } } }] }, createdAt: null, updatedAt: null }], pageInfo: { hasNextPage: false, endCursor: null } } },
     })));
     const client = new LinearClient({ endpoint: "http://local/graphql", apiKey: "token", projectSlug: "symphony-local", fetch });
 
@@ -12,6 +12,9 @@ describe("LinearClient", () => {
 
     expect(issues[0]?.identifier).toBe("LOC-1");
     expect(issues[0]?.priority).toBe("high");
+    expect(issues[0]?.blockedBy).toEqual([
+      { id: "2", identifier: "LOC-2", state: "In Progress" },
+    ]);
     expect(fetch).toHaveBeenCalledOnce();
   });
 

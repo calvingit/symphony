@@ -146,6 +146,109 @@ describe("local Linear GraphQL", () => {
     expect(body.data.issue.comments.nodes).toEqual([{ body: "workpad" }]);
   });
 
+  it("returns blocker relations for both blocked-by and blocks views", async () => {
+    const store = createInMemoryStore();
+    await store.seedDefaultProject("symphony-local");
+    const blocked = await store.createIssue({
+      identifier: "LOC-1",
+      title: "Blocked work",
+      state: "Todo",
+      projectSlug: "symphony-local",
+    });
+    const blocker = await store.createIssue({
+      identifier: "LOC-2",
+      title: "Unblock first",
+      state: "In Progress",
+      projectSlug: "symphony-local",
+    });
+    const server = createLinearGraphqlServer({ store, token: "local-dev-token" });
+
+    const mutation = await server.fetch("http://local/graphql", {
+      method: "POST",
+      headers: { authorization: "Bearer local-dev-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `mutation CreateRelation($issueId: ID!, $relatedIssueId: ID!, $type: String!) {
+          issueRelationCreate(issueId: $issueId, relatedIssueId: $relatedIssueId, type: $type) {
+            success
+            relation {
+              type
+              issue { identifier }
+              relatedIssue { identifier }
+            }
+          }
+        }`,
+        variables: {
+          issueId: blocked.id,
+          relatedIssueId: blocker.id,
+          type: "blocked_by",
+        },
+      }),
+    });
+    const mutationBody = await mutation.json();
+    expect(mutationBody.data.issueRelationCreate).toEqual({
+      success: true,
+      relation: {
+        type: "blocked_by",
+        issue: { identifier: "LOC-1" },
+        relatedIssue: { identifier: "LOC-2" },
+      },
+    });
+
+    const blockedResponse = await server.fetch("http://local/graphql", {
+      method: "POST",
+      headers: { authorization: "Bearer local-dev-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `query BlockedIssue($id: ID!) {
+          issue(id: $id) {
+            relations {
+              nodes {
+                type
+                issue { identifier }
+                relatedIssue { identifier }
+              }
+            }
+          }
+        }`,
+        variables: { id: blocked.id },
+      }),
+    });
+    const blockedBody = await blockedResponse.json();
+    expect(blockedBody.data.issue.relations.nodes).toEqual([
+      {
+        type: "blocked_by",
+        issue: { identifier: "LOC-1" },
+        relatedIssue: { identifier: "LOC-2" },
+      },
+    ]);
+
+    const blockerResponse = await server.fetch("http://local/graphql", {
+      method: "POST",
+      headers: { authorization: "Bearer local-dev-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `query BlockerIssue($id: ID!) {
+          issue(id: $id) {
+            relations {
+              nodes {
+                type
+                issue { identifier }
+                relatedIssue { identifier }
+              }
+            }
+          }
+        }`,
+        variables: { id: blocker.id },
+      }),
+    });
+    const blockerBody = await blockerResponse.json();
+    expect(blockerBody.data.issue.relations.nodes).toEqual([
+      {
+        type: "blocked_by",
+        issue: { identifier: "LOC-1" },
+        relatedIssue: { identifier: "LOC-2" },
+      },
+    ]);
+  });
+
   it("creates issues with description inside the selected project", async () => {
     const store = createInMemoryStore();
     await store.createProject({

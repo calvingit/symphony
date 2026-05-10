@@ -1,10 +1,18 @@
 import { create } from "zustand";
 import type { IssuePriority } from "@symphony/core";
-import type { KanbanIssue, ProjectRecord, ProjectWorkspace, RunProgress } from "./graphql";
+import type {
+  IssueDetails,
+  KanbanIssue,
+  ProjectRecord,
+  ProjectWorkspace,
+  RunProgress,
+  RunProgressEvent,
+} from "./graphql";
 import {
   createIssue,
   createProject,
   deleteProject,
+  fetchIssueDetails,
   fetchIssues,
   fetchProjects,
   fetchRunProgress,
@@ -32,10 +40,16 @@ interface KanbanStore {
   issues: KanbanIssue[];
   visibleColumns: string[];
   runs: Record<string, RunProgress>;
+  runEvents: RunProgressEvent[];
+  selectedIssueId: string | null;
+  issueDetailsById: Record<string, IssueDetails>;
+  issueDetailsLoading: boolean;
+  issueDetailsError: string | null;
   isLoading: boolean;
   loadProjects: () => Promise<void>;
   loadIssues: () => Promise<void>;
   loadRuns: () => Promise<void>;
+  loadIssueDetails: (issueId: string) => Promise<void>;
   moveIssue: (issueId: string, newState: string) => Promise<void>;
   addIssue: (input: {
     title: string;
@@ -52,6 +66,8 @@ interface KanbanStore {
     input: { name?: string; workspace?: ProjectWorkspace },
   ) => Promise<void>;
   removeProject: (slugId: string) => Promise<void>;
+  openIssueDetails: (issueId: string) => Promise<void>;
+  closeIssueDetails: () => void;
   toggleColumn: (columnId: string) => void;
 }
 
@@ -61,6 +77,11 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
   issues: [],
   visibleColumns: DEFAULT_VISIBLE,
   runs: {},
+  runEvents: [],
+  selectedIssueId: null,
+  issueDetailsById: {},
+  issueDetailsLoading: false,
+  issueDetailsError: null,
   isLoading: false,
 
   loadProjects: async () => {
@@ -86,8 +107,30 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
   },
 
   loadRuns: async () => {
-    const runs = await fetchRunProgress();
-    set({ runs: Object.fromEntries(runs.map((run) => [run.issueId, run])) });
+    const { runs, events } = await fetchRunProgress();
+    set({
+      runs: Object.fromEntries(runs.map((run) => [run.issueId, run])),
+      runEvents: events,
+    });
+  },
+
+  loadIssueDetails: async (issueId) => {
+    set({ issueDetailsLoading: true, issueDetailsError: null });
+    try {
+      const issue = await fetchIssueDetails(issueId);
+      set((state) => ({
+        issueDetailsById: issue
+          ? { ...state.issueDetailsById, [issueId]: issue }
+          : state.issueDetailsById,
+        issueDetailsLoading: false,
+        issueDetailsError: issue ? null : "Issue not found",
+      }));
+    } catch (error) {
+      set({
+        issueDetailsLoading: false,
+        issueDetailsError: error instanceof Error ? error.message : "Failed to load issue details",
+      });
+    }
   },
 
   moveIssue: async (issueId, newState) => {
@@ -120,7 +163,7 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
   },
 
   selectProject: (slugId) => {
-    set({ selectedProjectSlug: slugId });
+    set({ selectedProjectSlug: slugId, selectedIssueId: null, issueDetailsError: null });
   },
 
   addProject: async (input) => {
@@ -151,7 +194,17 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
       projects,
       selectedProjectSlug,
       issues: get().selectedProjectSlug === slugId ? [] : get().issues,
+      selectedIssueId: get().selectedProjectSlug === slugId ? null : get().selectedIssueId,
     });
+  },
+
+  openIssueDetails: async (issueId) => {
+    set({ selectedIssueId: issueId, issueDetailsError: null });
+    await get().loadIssueDetails(issueId);
+  },
+
+  closeIssueDetails: () => {
+    set({ selectedIssueId: null, issueDetailsError: null });
   },
 
   toggleColumn: (columnId) => {

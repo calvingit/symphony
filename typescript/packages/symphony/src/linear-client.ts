@@ -24,7 +24,7 @@ export class LinearClient {
             state { name }
             project { slugId name workspace { kind localPath remoteUrl baseBranch } }
             labels { nodes { name } }
-            relations { nodes { type relatedIssue { id identifier state { name } } } }
+            relations { nodes { type issue { id } relatedIssue { id identifier state { name } } } }
           }
           pageInfo { hasNextPage endCursor }
         }
@@ -70,7 +70,7 @@ export class LinearClient {
           state { name }
           project { slugId name workspace { kind localPath remoteUrl baseBranch } }
           labels { nodes { name } }
-          relations { nodes { type relatedIssue { id identifier state { name } } } }
+          relations { nodes { type issue { id } relatedIssue { id identifier state { name } } } }
         }
       }`,
       variables: { ids },
@@ -117,7 +117,29 @@ function normalizeIssue(node: any): Issue {
     labels: Array.isArray(node.labels?.nodes)
       ? normalizeLabels(node.labels.nodes.map((label: any) => String(label.name)))
       : [],
-    blockedBy: [],
+    blockedBy: Array.isArray(node.relations?.nodes)
+      ? node.relations.nodes
+          .filter(
+            (relation: any) =>
+              relation?.type === "blocked_by" &&
+              relation?.issue?.id === node.id &&
+              relation?.relatedIssue,
+          )
+          .map((relation: any) => ({
+            id:
+              typeof relation.relatedIssue?.id === "string"
+                ? relation.relatedIssue.id
+                : null,
+            identifier:
+              typeof relation.relatedIssue?.identifier === "string"
+                ? relation.relatedIssue.identifier
+                : null,
+            state:
+              typeof relation.relatedIssue?.state?.name === "string"
+                ? relation.relatedIssue.state.name
+                : null,
+          }))
+      : [],
     project:
       node.project && typeof node.project.slugId === "string"
         ? {

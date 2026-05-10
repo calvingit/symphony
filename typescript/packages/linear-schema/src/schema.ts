@@ -162,6 +162,11 @@ export const typeDefs = /* GraphQL */ `
     comment: Comment
   }
 
+  type IssueRelationPayload {
+    success: Boolean!
+    relation: IssueRelation
+  }
+
   type Mutation {
     projectCreate(input: ProjectCreateInput!): ProjectPayload!
     projectUpdate(slugId: String!, input: ProjectUpdateInput!): ProjectPayload!
@@ -170,5 +175,6 @@ export const typeDefs = /* GraphQL */ `
     issueUpdate(id: ID!, input: IssueUpdateInput!): IssuePayload!
     commentCreate(issueId: ID!, body: String!): CommentPayload!
     commentUpdate(id: ID!, body: String!): CommentPayload!
+    issueRelationCreate(issueId: ID!, relatedIssueId: ID!, type: String!): IssueRelationPayload!
   }
 `;
