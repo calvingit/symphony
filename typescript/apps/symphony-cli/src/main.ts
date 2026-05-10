@@ -1,4 +1,5 @@
 import { isAbsolute, resolve } from "node:path";
+import type { Issue } from "@symphony/core";
 import { LinearClient, cleanupWorkspaceForIssue, createOrchestrator, createRunProgressTracker, loadWorkflow, resolveConfig, runAgentAttempt } from "@symphony/symphony";
 import { startStatusServer } from "./status-server.js";
 
@@ -23,10 +24,10 @@ export async function startSymphony(input: { workflowPath: string; port: number 
   });
   const progress = createRunProgressTracker();
 
-  async function cleanupIssue(issue: { identifier: string }) {
+  async function cleanupIssue(issue: Issue) {
     await cleanupWorkspaceForIssue({
       root: config.workspace.root,
-      identifier: issue.identifier,
+      issue,
       beforeRemove: config.hooks.beforeRemove,
       timeoutMs: config.hooks.timeoutMs,
     });

@@ -1,11 +1,15 @@
+import { execFile } from 'node:child_process';
 import { chmod, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import type { Issue } from '@symphony/core';
 import { runAgentAttempt } from '../src/agent-runner.js';
 import { createRunProgressTracker } from '../src/run-progress.js';
 import type { EffectiveConfig } from '../src/config.js';
+
+const execFileAsync = promisify(execFile);
 
 describe('runAgentAttempt', () => {
   it('maps Codex lifecycle and command events into run progress', async () => {
@@ -128,6 +132,7 @@ done
 
   it('exposes workspace and issue context to hooks', async () => {
     const root = await mkdtemp(join(tmpdir(), 'symphony-agent-hooks-'));
+    const repoPath = await createGitRepo(await mkdtemp(join(tmpdir(), 'symphony-agent-repo-')));
     const command = await createFakeCodexCommand(
       root,
       `
@@ -159,10 +164,10 @@ done
       slugId: 'repo-loc-12',
       name: 'Repo LOC 12',
       workspace: {
-        kind: 'remote',
-        localPath: null,
-        remoteUrl: 'git@example.com:repo-loc-12.git',
-        baseBranch: 'develop',
+        kind: 'local',
+        localPath: repoPath,
+        remoteUrl: null,
+        baseBranch: 'main',
       },
     };
     const result = await runAgentAttempt({
@@ -173,7 +178,7 @@ done
         ...config(root, command),
         hooks: {
           afterCreate:
-            'printf "%s\\n%s\\n%s\\n%s\\n%s\\n%s" "$SYMPHONY_WORKSPACE_PATH" "$SYMPHONY_ISSUE_IDENTIFIER" "$SYMPHONY_ISSUE_BRANCH_NAME" "$SYMPHONY_PROJECT_SLUG" "$SYMPHONY_PROJECT_REMOTE_URL" "$SYMPHONY_ATTEMPT" > hook-env.txt',
+            'printf "%s\\n%s\\n%s\\n%s\\n%s\\n%s" "$SYMPHONY_WORKSPACE_PATH" "$SYMPHONY_ISSUE_IDENTIFIER" "$SYMPHONY_ISSUE_BRANCH_NAME" "$SYMPHONY_PROJECT_SLUG" "$SYMPHONY_PROJECT_LOCAL_PATH" "$SYMPHONY_ATTEMPT" > hook-env.txt',
           beforeRun: null,
           afterRun: null,
           beforeRemove: null,
@@ -183,9 +188,9 @@ done
     });
 
     expect(result.status).toBe('normal');
-    const workspacePath = join(root, 'LOC-12');
+    const workspacePath = join(repoPath, '.worktrees', 'LOC-12');
     await expect(readFile(join(workspacePath, 'hook-env.txt'), 'utf8')).resolves.toBe(
-      `${workspacePath}\nLOC-12\nfeature/loc-12\nrepo-loc-12\ngit@example.com:repo-loc-12.git\n3`,
+      `${workspacePath}\nLOC-12\nfeature/loc-12\nrepo-loc-12\n${repoPath}\n3`,
     );
   });
 
@@ -286,4 +291,19 @@ ${scriptBody}
 
 function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+async function createGitRepo(repoPath: string): Promise<string> {
+  await execFileAsync('git', ['init', '-b', 'main', repoPath]);
+  await git(repoPath, ['config', 'user.email', 'test@example.com']);
+  await git(repoPath, ['config', 'user.name', 'Test User']);
+  await writeFile(join(repoPath, 'README.md'), '# Demo\n', 'utf8');
+  await git(repoPath, ['add', 'README.md']);
+  await git(repoPath, ['commit', '-m', 'init']);
+  const result = await execFileAsync('git', ['-C', repoPath, 'rev-parse', '--show-toplevel']);
+  return String(result.stdout).trim();
+}
+
+async function git(cwd: string, args: string[]): Promise<void> {
+  await execFileAsync('git', ['-C', cwd, ...args]);
 }

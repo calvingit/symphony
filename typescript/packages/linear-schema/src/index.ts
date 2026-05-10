@@ -1,4 +1,5 @@
 export { createLinearGraphqlServer } from "./server.js";
+export { createJsonFileStore } from "./json-file-store.js";
 export { createSqliteStore } from "./database.js";
 export { createInMemoryStore } from "./store.js";
 export type {

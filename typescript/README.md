@@ -24,17 +24,20 @@ make dev
 `make dev` defaults to the real `codex app-server` via `WORKFLOW.local.md`, so token, auth, and
 quota failures surface normally in the status API.
 
-The default local workflow creates deterministic per-issue workspaces under
-`tmp/workspaces/<ISSUE_IDENTIFIER>`, clones the Git repo configured on the selected project, and
-checks out `issue.branchName` or the project's default branch.
+The default local workflow creates one Git worktree per issue. For a local project workspace,
+worktrees live under `<project-repo>/.worktrees/<ISSUE_IDENTIFIER>`. For a remote project workspace,
+Symphony clones or updates the remote in `/private/tmp/symphony-remote-workspaces/` with
+`git pull --ff-only`, then creates the issue worktree under that cached repository's `.worktrees/`
+directory.
 
 Hook scripts now receive `SYMPHONY_WORKSPACE_PATH`, `SYMPHONY_WORKSPACE_KEY`,
 `SYMPHONY_ISSUE_ID`, `SYMPHONY_ISSUE_IDENTIFIER`, `SYMPHONY_ISSUE_TITLE`,
 `SYMPHONY_ISSUE_DESCRIPTION`, `SYMPHONY_ISSUE_STATE`,
 `SYMPHONY_ISSUE_BRANCH_NAME`, `SYMPHONY_ISSUE_URL`, `SYMPHONY_PROJECT_SLUG`,
 `SYMPHONY_PROJECT_NAME`, `SYMPHONY_PROJECT_WORKSPACE_KIND`, `SYMPHONY_PROJECT_LOCAL_PATH`,
-`SYMPHONY_PROJECT_REMOTE_URL`, `SYMPHONY_PROJECT_BASE_BRANCH`, and `SYMPHONY_ATTEMPT`, so you can
-customize repo hydration in `after_create` / `before_run`.
+`SYMPHONY_PROJECT_REMOTE_URL`, `SYMPHONY_PROJECT_BASE_BRANCH`, and `SYMPHONY_ATTEMPT`. Repository
+hydration is handled by Symphony before hooks run; hooks should only validate or prepare the
+already-created worktree.
 
 Useful Make targets:
 
@@ -60,8 +63,10 @@ make dev WORKFLOW_FILE=./WORKFLOW.local.stub.md
 
 Default bearer token: `local-dev-token`
 
-The local tracker now persists projects, issues, and comments in SQLite at
+The local tracker persists projects, issues, and comments in SQLite at
 `typescript/tmp/linear-local.db` by default. Override with `LINEAR_LOCAL_DB_PATH=/absolute/path.db`.
+If SQLite cannot initialize in the current runtime, the tracker falls back to a JSON file at
+`<LINEAR_LOCAL_DB_PATH>.json` instead of an in-memory store.
 
 ### Kanban board
 
@@ -87,8 +92,8 @@ Linear-compatible schema with project CRUD, `issues` query, `issueCreate`, and `
 
 Each project carries a workspace config:
 
-- `local` — clone from a local Git repo path
-- `remote` — clone from a remote Git URL and default branch
+- `local` — use a local Git repository and create issue worktrees under its `.worktrees/` directory
+- `remote` — clone or pull a remote Git URL into `/private/tmp/`, then create issue worktrees there
 
 ## Run Symphony against local tracker
 
@@ -109,7 +114,7 @@ packages/
   core/            — shared types and utilities
   symphony/        — core engine (orchestrator, agent-runner, workspace-manager, hook-runner,
                      config, prompt-renderer, linear-client, tracker)
-  linear-schema/   — GraphQL schema, resolvers, in-memory store
+  linear-schema/   — GraphQL schema, resolvers, and local tracker stores
 apps/
   linear-local/    — Next.js local tracker (GraphQL + Kanban UI)
   symphony-cli/    — Hono-based CLI/status server

@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { createInMemoryStore, type LocalLinearStore } from "@symphony/linear-schema";
+import { type LocalLinearStore } from "@symphony/linear-schema";
 
 let store: LocalLinearStore | undefined;
 let storePromise: Promise<LocalLinearStore> | undefined;
@@ -25,11 +25,12 @@ async function createStore(): Promise<LocalLinearStore> {
     await seedDefaultProject(nextStore, repoRoot);
     return nextStore;
   } catch (error) {
-    console.warn("Falling back to in-memory linear-local store", {
+    console.warn("Falling back to json-file linear-local store", {
       dbPath,
       error: error instanceof Error ? error.message : String(error),
     });
-    const nextStore = createInMemoryStore();
+    const { createJsonFileStore } = await import("@symphony/linear-schema");
+    const nextStore = await createJsonFileStore(`${dbPath}.json`);
     await seedDefaultProject(nextStore, repoRoot);
     return nextStore;
   }

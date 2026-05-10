@@ -19,10 +19,10 @@ export async function runAgentAttempt(input: {
   };
 
   emit('preparing_workspace');
-  const workspace = await createWorkspaceForIssue(
-    input.config.workspace.root,
-    input.issue.identifier,
-  );
+  const workspace = await createWorkspaceForIssue({
+    root: input.config.workspace.root,
+    issue: input.issue,
+  });
   const hookEnv = buildHookEnv({
     issue: input.issue,
     attempt: input.attempt,
