@@ -39,6 +39,9 @@ agent:
   max_turns: 1
 codex:
   command: codex app-server
+  approval_policy: never
+  thread_sandbox: danger-full-access
+  turn_sandbox_policy: danger-full-access
 ---
 
 You are working on local issue {{ issue.identifier }}.

@@ -22,7 +22,9 @@ make dev
 ```
 
 `make dev` defaults to the real `codex app-server` via `WORKFLOW.local.md`, so token, auth, and
-quota failures surface normally in the status API.
+quota failures surface normally in the status API. The local workflow also sets
+`approval_policy: never` with `danger-full-access` sandbox defaults to avoid local runs stalling on
+approval requests.
 
 The default local workflow creates one Git worktree per issue. For a local project workspace,
 worktrees live under `<project-repo>/.worktrees/<ISSUE_IDENTIFIER>`. For a remote project workspace,

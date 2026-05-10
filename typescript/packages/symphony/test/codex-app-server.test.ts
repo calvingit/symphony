@@ -46,6 +46,10 @@ done
       'thread/start',
       'turn/start',
     ]);
+    expect(messages[2]?.params?.approvalPolicy).toBe('never');
+    expect(messages[2]?.params?.sandbox).toBe('danger-full-access');
+    expect(messages[3]?.params?.approvalPolicy).toBe('never');
+    expect(messages[3]?.params?.sandboxPolicy).toEqual({ type: 'dangerFullAccess' });
     expect(messages[2]?.params?.dynamicTools).toEqual([
       expect.objectContaining({
         name: 'linear_graphql',

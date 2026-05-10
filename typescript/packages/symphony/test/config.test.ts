@@ -40,6 +40,9 @@ describe("resolveConfig", () => {
     expect(config.codex.turnTimeoutMs).toBe(3600000);
     expect(config.codex.readTimeoutMs).toBe(5000);
     expect(config.codex.stallTimeoutMs).toBe(300000);
+    expect(config.codex.approvalPolicy).toBe('never');
+    expect(config.codex.threadSandbox).toBe('danger-full-access');
+    expect(config.codex.turnSandboxPolicy).toBe('danger-full-access');
   });
 
   it("resolves missing tracker auth from the canonical Linear environment variable", () => {

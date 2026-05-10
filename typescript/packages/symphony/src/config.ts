@@ -94,9 +94,9 @@ export function resolveConfig(raw: unknown, context: ResolveConfigContext): Effe
       turnTimeoutMs: readPositiveInteger(codex.turn_timeout_ms) ?? 3600000,
       readTimeoutMs: readPositiveInteger(codex.read_timeout_ms) ?? 5000,
       stallTimeoutMs: readPositiveInteger(codex.stall_timeout_ms) ?? 300000,
-      approvalPolicy: readString(codex.approval_policy),
-      threadSandbox: readString(codex.thread_sandbox),
-      turnSandboxPolicy: readConfigValue(codex.turn_sandbox_policy),
+      approvalPolicy: readString(codex.approval_policy) ?? 'never',
+      threadSandbox: readString(codex.thread_sandbox) ?? 'danger-full-access',
+      turnSandboxPolicy: readConfigValue(codex.turn_sandbox_policy) ?? 'danger-full-access',
     },
   };
 }

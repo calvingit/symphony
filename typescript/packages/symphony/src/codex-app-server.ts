@@ -169,7 +169,7 @@ export function runAppServerTurn(input: {
             input: [{ type: 'text', text: input.prompt }],
             cwd: input.cwd,
             approvalPolicy: input.approvalPolicy ?? 'never',
-            sandboxPolicy: normalizeTurnSandboxPolicy(input.turnSandboxPolicy, input.cwd),
+            sandboxPolicy: normalizeTurnSandboxPolicy(input.turnSandboxPolicy),
           }),
         );
         turnId = readTurnId(turnResult) ?? turnId;
@@ -395,13 +395,12 @@ function normalizeThreadSandbox(value: string | undefined): string {
     case 'dangerFullAccess':
       return 'danger-full-access';
     default:
-      return value ?? 'workspace-write';
+      return value ?? 'danger-full-access';
   }
 }
 
 function normalizeTurnSandboxPolicy(
   value: Record<string, unknown> | string | undefined,
-  cwd: string,
 ): Record<string, unknown> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value;
@@ -414,11 +413,7 @@ function normalizeTurnSandboxPolicy(
     case 'dangerFullAccess':
       return { type: 'dangerFullAccess' };
     default:
-      return {
-        type: 'workspaceWrite',
-        writableRoots: [cwd],
-        networkAccess: true,
-      };
+      return { type: 'dangerFullAccess' };
   }
 }
 
