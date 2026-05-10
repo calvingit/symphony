@@ -100,7 +100,47 @@ _service-stop:
 	@if [ -f "$(PID_FILE)" ]; then \
 		pid=$$(cat "$(PID_FILE)"); \
 		if kill -0 "$$pid" 2>/dev/null; then \
-			kill "$$pid"; \
+			targets=(); \
+			collect_descendants() { \
+				local parent="$$1"; \
+				local child=""; \
+				while IFS= read -r child; do \
+					[ -n "$$child" ] || continue; \
+					collect_descendants "$$child"; \
+					targets+=("$$child"); \
+				done < <(pgrep -P "$$parent" 2>/dev/null || true); \
+			}; \
+			collect_descendants "$$pid"; \
+			targets+=("$$pid"); \
+			for target in "$${targets[@]}"; do \
+				kill "$$target" 2>/dev/null || true; \
+			done; \
+			alive=1; \
+			deadline=$$((SECONDS + 5)); \
+			while [ $$SECONDS -lt $$deadline ]; do \
+				alive=0; \
+				for target in "$${targets[@]}"; do \
+					if kill -0 "$$target" 2>/dev/null; then \
+						alive=1; \
+						break; \
+					fi; \
+				done; \
+				if [ $$alive -eq 0 ]; then \
+					break; \
+				fi; \
+				sleep 0.2; \
+			done; \
+			if [ $$alive -ne 0 ]; then \
+				for target in "$${targets[@]}"; do \
+					kill -9 "$$target" 2>/dev/null || true; \
+				done; \
+			fi; \
+			for target in "$${targets[@]}"; do \
+				if kill -0 "$$target" 2>/dev/null; then \
+					echo "Failed to stop $(NAME) (pid $$pid)" >&2; \
+					exit 1; \
+				fi; \
+			done; \
 			echo "Stopped $(NAME) (pid $$pid)"; \
 		else \
 			echo "$(NAME) already stopped"; \
