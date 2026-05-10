@@ -45,6 +45,27 @@ describe("resolveConfig", () => {
     expect(config.codex.turnSandboxPolicy).toBe('danger-full-access');
   });
 
+  it('allows Linear config without project_slug for all-project polling', () => {
+    const config = resolveConfig(
+      {
+        tracker: {
+          kind: 'linear',
+          api_key: '$LINEAR_API_KEY',
+        },
+      },
+      {
+        workflowDirectory: '/repo',
+        env: { LINEAR_API_KEY: 'token-1' },
+        homeDirectory: '/Users/tester',
+        tempDirectory: '/tmp',
+      },
+    );
+
+    expect(config.tracker.kind).toBe('linear');
+    expect(config.tracker.apiKey).toBe('token-1');
+    expect(config.tracker.projectSlug).toBeUndefined();
+  });
+
   it("resolves missing tracker auth from the canonical Linear environment variable", () => {
     const config = resolveConfig(
       { tracker: { kind: "linear", project_slug: "symphony-local" } },

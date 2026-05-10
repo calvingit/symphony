@@ -3,7 +3,6 @@ tracker:
   kind: linear
   endpoint: http://localhost:3001/graphql
   api_key: local-dev-token
-  project_slug: symphony-local
   active_states:
     - Todo
     - In Progress

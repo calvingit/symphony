@@ -12,8 +12,8 @@ export async function startSymphony(input: { workflowPath: string; port: number 
     tempDirectory: process.env.TMPDIR ?? "/tmp",
   });
 
-  if (!config.tracker.apiKey || !config.tracker.projectSlug) {
-    throw new Error("invalid_config: tracker.api_key and tracker.project_slug are required");
+  if (!config.tracker.apiKey) {
+    throw new Error("invalid_config: tracker.api_key is required");
   }
 
   const client = new LinearClient({

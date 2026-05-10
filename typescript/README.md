@@ -80,7 +80,8 @@ design:
 - **Task cards** — identifier (monospace), title (2-line clamp), state color dot, priority indicator,
   "Updated" date
 - **Drag & drop** — `PointerSensor` with 5 px activation distance, visual overlay on drag
-- **Projects** — switch between projects in the navbar, manage project CRUD and workspace source
+- **Projects** — switch between projects in the navbar, manage project CRUD and workspace source;
+  this only changes the visible UI slice and does not change Symphony's backend polling scope
 - **Create task** — "+" button or "New task" at column bottom, modal dialog with `title +
   description`
 - **Column management** — right sidebar "Hidden columns" toggle to show/hide workflow states
@@ -102,6 +103,10 @@ Each project carries a workspace config:
 ```bash
 pnpm --filter @symphony/symphony-cli dev -- --port 4010 ./WORKFLOW.local.md
 ```
+
+By default, Symphony polls active issues across all projects exposed by the configured Linear or
+Linear-compatible endpoint. Set `tracker.project_slug` only when you explicitly want to limit
+polling to one project for compatibility or debugging.
 
 Status API:
 

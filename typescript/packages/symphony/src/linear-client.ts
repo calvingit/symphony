@@ -5,7 +5,7 @@ export class LinearClient {
     private readonly input: {
       endpoint: string;
       apiKey: string;
-      projectSlug: string;
+      projectSlug?: string;
       fetch: typeof fetch;
     },
   ) {}
@@ -16,8 +16,8 @@ export class LinearClient {
     let hasNextPage = true;
 
     while (hasNextPage) {
-      const body = await this.graphql({
-        query: `query SymphonyLinearPoll($projectSlug: String!, $stateNames: [String!]!, $first: Int!, $after: String) {
+      const query = this.input.projectSlug
+        ? `query SymphonyLinearPoll($projectSlug: String!, $stateNames: [String!]!, $first: Int!, $after: String) {
         issues(filter: { project: { slugId: { eq: $projectSlug } }, state: { name: { in: $stateNames } } }, first: $first, after: $after) {
           nodes {
             id identifier title description priority branchName url createdAt updatedAt
@@ -28,8 +28,24 @@ export class LinearClient {
           }
           pageInfo { hasNextPage endCursor }
         }
-      }`,
-        variables: { projectSlug: this.input.projectSlug, stateNames: activeStates, first: 50, after },
+      }`
+        : `query SymphonyLinearPoll($stateNames: [String!]!, $first: Int!, $after: String) {
+        issues(filter: { state: { name: { in: $stateNames } } }, first: $first, after: $after) {
+          nodes {
+            id identifier title description priority branchName url createdAt updatedAt
+            state { name }
+            project { slugId name workspace { kind localPath remoteUrl baseBranch } }
+            labels { nodes { name } }
+            relations { nodes { type issue { id } relatedIssue { id identifier state { name } } } }
+          }
+          pageInfo { hasNextPage endCursor }
+        }
+      }`;
+      const body = await this.graphql({
+        query,
+        variables: this.input.projectSlug
+          ? { projectSlug: this.input.projectSlug, stateNames: activeStates, first: 50, after }
+          : { stateNames: activeStates, first: 50, after },
       });
 
       const nodes = body.data?.issues?.nodes;
