@@ -35,6 +35,7 @@ function OverviewPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const projectFromUrl = searchParams.get("project");
+  const requiresProject = projects.length === 0;
 
   useEffect(() => {
     void loadProjects();
@@ -115,9 +116,15 @@ function OverviewPageContent() {
         runs={runs}
       />
       <ProjectsDialog
-        open={projectsOpen}
+        open={requiresProject || projectsOpen}
         projects={projects}
-        onClose={() => setProjectsOpen(false)}
+        required={requiresProject}
+        onClose={() => {
+          if (requiresProject) {
+            return;
+          }
+          setProjectsOpen(false);
+        }}
         onCreate={addProject}
         onUpdate={editProject}
         onDelete={removeProject}

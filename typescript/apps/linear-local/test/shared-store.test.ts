@@ -19,7 +19,7 @@ describe("getStore", () => {
     }
   });
 
-  it("falls back to the json-file store when sqlite initialization fails", async () => {
+  it("falls back to the json-file store without creating a default project", async () => {
     const root = await mkdtemp(join(tmpdir(), "linear-local-json-fallback-"));
     const dbPath = join(root, "linear-local.db");
     process.env.LINEAR_LOCAL_DB_PATH = dbPath;
@@ -49,8 +49,7 @@ describe("getStore", () => {
     });
     const projects = await store.listProjects();
 
-    expect(projects.map((project) => project.slugId)).toContain("symphony-local");
-    expect(projects.map((project) => project.slugId)).toContain("demo");
+    expect(projects.map((project) => project.slugId)).toEqual(["demo"]);
     expect(warn).toHaveBeenCalledWith(
       "Falling back to json-file linear-local store",
       expect.objectContaining({ dbPath, error: "sqlite unavailable" }),

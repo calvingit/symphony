@@ -28,6 +28,7 @@ function IssuesPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const projectFromUrl = searchParams.get("project");
+  const requiresProject = projects.length === 0;
 
   useEffect(() => {
     if (!projectFromUrl || projectFromUrl === selectedProjectSlug) {
@@ -83,7 +84,16 @@ function IssuesPageContent() {
         onProjectChange={selectProject}
         onManageProjects={() => setProjectsOpen(true)}
       />
-      <KanbanBoard projectsOpen={projectsOpen} onProjectsClose={() => setProjectsOpen(false)} />
+      <KanbanBoard
+        projectsOpen={requiresProject || projectsOpen}
+        projectsRequired={requiresProject}
+        onProjectsClose={() => {
+          if (requiresProject) {
+            return;
+          }
+          setProjectsOpen(false);
+        }}
+      />
     </div>
   );
 }

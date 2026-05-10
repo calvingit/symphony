@@ -7,6 +7,7 @@ import type { ProjectRecord, ProjectWorkspace } from "../lib/graphql";
 interface ProjectsDialogProps {
   open: boolean;
   projects: ProjectRecord[];
+  required?: boolean;
   onClose: () => void;
   onCreate: (input: { slugId: string; name: string; workspace: ProjectWorkspace }) => Promise<void>;
   onUpdate: (
@@ -41,6 +42,7 @@ function toDefaultSlug(value: string): string {
 export function ProjectsDialog({
   open,
   projects,
+  required = false,
   onClose,
   onCreate,
   onUpdate,
@@ -55,6 +57,7 @@ export function ProjectsDialog({
     [projects, editingSlug],
   );
   const defaultSlug = useMemo(() => toDefaultSlug(form.name), [form.name]);
+  const requiresFirstProject = required && projects.length === 0;
   const canSubmit =
     Boolean(form.name.trim()) &&
     Boolean(editingProject ? form.slugId.trim() : form.slugId.trim() || defaultSlug) &&
@@ -83,6 +86,11 @@ export function ProjectsDialog({
   }, [editingProject, open]);
 
   if (!open) return null;
+
+  function handleClose() {
+    if (requiresFirstProject) return;
+    onClose();
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -121,66 +129,88 @@ export function ProjectsDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
-      <div className="fixed inset-0 bg-black/20" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/20" onClick={handleClose} />
       <div className="relative w-full max-w-5xl rounded-xl border border-gray-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Projects</h2>
-            <p className="mt-1 text-xs text-gray-500">Manage project workspaces and repo sources.</p>
+            <h2 className="text-sm font-semibold text-gray-900">
+              {requiresFirstProject ? "Create your first project" : "Projects"}
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              {requiresFirstProject
+                ? "Set up a project workspace before using the local tracker."
+                : "Manage project workspaces and repo sources."}
+            </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-4 w-4" />
-          </button>
+          {!requiresFirstProject ? (
+            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
         </div>
 
         <div className="grid gap-0 md:grid-cols-[1.2fr_1fr]">
           <div className="border-r border-gray-200 p-5">
             <div className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-              Existing projects
+              {requiresFirstProject ? "Before you start" : "Existing projects"}
             </div>
 
-            <div className="space-y-2">
-              {projects.map((project) => (
-                <div
-                  key={project.slugId}
-                  className="rounded-lg border border-gray-200 px-3 py-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{project.name}</div>
-                      <div className="mt-1 text-xs text-gray-500">{project.slugId}</div>
-                      <div className="mt-2 text-xs text-gray-600">
-                        {project.workspace.kind === "local"
-                          ? project.workspace.localPath || "Local repo path missing"
-                          : project.workspace.remoteUrl || "Remote URL missing"}
+            {projects.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-4">
+                <div className="text-sm font-medium text-gray-900">No projects yet</div>
+                <div className="mt-1 text-xs leading-5 text-gray-500">
+                  Create a local or remote repo workspace. The first project becomes the active
+                  project for the board and overview pages.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {projects.map((project) => (
+                  <div
+                    key={project.slugId}
+                    className="rounded-lg border border-gray-200 px-3 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{project.name}</div>
+                        <div className="mt-1 text-xs text-gray-500">{project.slugId}</div>
+                        <div className="mt-2 text-xs text-gray-600">
+                          {project.workspace.kind === "local"
+                            ? project.workspace.localPath || "Local repo path missing"
+                            : project.workspace.remoteUrl || "Remote URL missing"}
+                        </div>
+                        <div className="mt-1 text-[11px] text-gray-400">
+                          Base branch: {project.workspace.baseBranch || "main"}
+                        </div>
                       </div>
-                      <div className="mt-1 text-[11px] text-gray-400">
-                        Base branch: {project.workspace.baseBranch || "main"}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setEditingSlug(project.slugId)}
+                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => void onDelete(project.slugId)}
+                          className="rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setEditingSlug(project.slugId)}
-                        className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => void onDelete(project.slugId)}
-                        className="rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="p-5">
             <div className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-              {editingProject ? `Edit ${editingProject.slugId}` : "Create project"}
+              {editingProject
+                ? `Edit ${editingProject.slugId}`
+                : requiresFirstProject
+                  ? "Create the first project"
+                  : "Create project"}
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <label className="block">

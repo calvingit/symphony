@@ -51,12 +51,14 @@ export function Navbar({
       <div className='flex items-center gap-2'>
         <select
           value={selectedProjectSlug ?? ''}
+          disabled={projects.length === 0}
           onChange={(event) => {
             const slugId = event.target.value;
             onProjectChange(slugId);
             router.replace(hrefWithProject(pathname, slugId), { scroll: false });
           }}
           className='rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-700'>
+          {projects.length === 0 ? <option value=''>No projects yet</option> : null}
           {projects.map((project) => (
             <option key={project.slugId} value={project.slugId}>
               {project.name}

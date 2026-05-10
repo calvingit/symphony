@@ -18,13 +18,20 @@ export async function POST(request: Request): Promise<Response> {
     const projectSlug =
       typeof body.projectSlug === 'string' && body.projectSlug.trim()
         ? body.projectSlug.trim()
-        : 'symphony-local';
+        : '';
 
     if (!title) {
       return Response.json({ error: 'title required' }, { status: 400 });
     }
+    if (!projectSlug) {
+      return Response.json({ error: 'projectSlug required' }, { status: 400 });
+    }
 
     const store = await getStore();
+    const project = await store.getProjectBySlug(projectSlug);
+    if (!project) {
+      return Response.json({ error: 'project not found' }, { status: 404 });
+    }
     const identifier = `LOC-${Date.now().toString(36).toUpperCase()}`;
     const issue = await store.createIssue({
       identifier,

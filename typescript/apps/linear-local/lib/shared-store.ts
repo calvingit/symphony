@@ -21,32 +21,15 @@ async function createStore(): Promise<LocalLinearStore> {
   mkdirSync(dirname(dbPath), { recursive: true });
   try {
     const { createSqliteStore } = await import("@symphony/linear-schema");
-    const nextStore = createSqliteStore(dbPath);
-    await seedDefaultProject(nextStore, repoRoot);
-    return nextStore;
+    return createSqliteStore(dbPath);
   } catch (error) {
     console.warn("Falling back to json-file linear-local store", {
       dbPath,
       error: error instanceof Error ? error.message : String(error),
     });
     const { createJsonFileStore } = await import("@symphony/linear-schema");
-    const nextStore = await createJsonFileStore(`${dbPath}.json`);
-    await seedDefaultProject(nextStore, repoRoot);
-    return nextStore;
+    return createJsonFileStore(`${dbPath}.json`);
   }
-}
-
-async function seedDefaultProject(store: LocalLinearStore, repoRoot: string): Promise<void> {
-  await store.seedDefaultProject("symphony-local");
-  await store.updateProject("symphony-local", {
-    name: "Symphony Local",
-    workspace: {
-      kind: "local",
-      localPath: repoRoot,
-      remoteUrl: null,
-      baseBranch: "main",
-    },
-  });
 }
 
 function findGitRoot(start: string): string | null {

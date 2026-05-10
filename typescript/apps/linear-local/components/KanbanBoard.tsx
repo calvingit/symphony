@@ -19,7 +19,11 @@ import { IssueDetailsDialog } from "./IssueDetailsDialog";
 import { useKanbanStore, COLUMNS } from "../lib/store";
 import type { KanbanIssue } from "../lib/graphql";
 
-export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () => void }) {
+export function KanbanBoard(props: {
+  projectsOpen: boolean;
+  projectsRequired: boolean;
+  onProjectsClose: () => void;
+}) {
   const {
     projects,
     selectedProjectSlug,
@@ -151,6 +155,7 @@ export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () 
       <ProjectsDialog
         open={props.projectsOpen}
         projects={projects}
+        required={props.projectsRequired}
         onClose={props.onProjectsClose}
         onCreate={addProject}
         onUpdate={editProject}
