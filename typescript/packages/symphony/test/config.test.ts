@@ -148,6 +148,32 @@ describe("resolveConfig", () => {
     expect(config.codex.turnSandboxPolicy).toBe("workspace-write");
   });
 
+  it('preserves object-form turn sandbox policy', () => {
+    const config = resolveConfig(
+      {
+        codex: {
+          turn_sandbox_policy: {
+            type: 'workspaceWrite',
+            writableRoots: ['/tmp/workspace'],
+            networkAccess: true,
+          },
+        },
+      },
+      {
+        workflowDirectory: '/repo',
+        env: {},
+        homeDirectory: '/Users/tester',
+        tempDirectory: '/tmp',
+      },
+    );
+
+    expect(config.codex.turnSandboxPolicy).toEqual({
+      type: 'workspaceWrite',
+      writableRoots: ['/tmp/workspace'],
+      networkAccess: true,
+    });
+  });
+
   it("resolves relative workspace roots relative to the workflow directory", () => {
     const config = resolveConfig(
       {

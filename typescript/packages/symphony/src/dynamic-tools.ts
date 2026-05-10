@@ -10,6 +10,42 @@ export interface LinearGraphqlContext {
   fetch: typeof fetch;
 }
 
+export interface DynamicToolSpec {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+const LINEAR_GRAPHQL_TOOL = 'linear_graphql';
+const LINEAR_GRAPHQL_DESCRIPTION =
+  "Execute a raw GraphQL query or mutation against Linear using Symphony's configured auth.";
+const LINEAR_GRAPHQL_INPUT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['query'],
+  properties: {
+    query: {
+      type: 'string',
+      description: 'GraphQL query or mutation document to execute against Linear.',
+    },
+    variables: {
+      type: ['object', 'null'],
+      description: 'Optional GraphQL variables object.',
+      additionalProperties: true,
+    },
+  },
+} satisfies Record<string, unknown>;
+
+export function getDynamicToolSpecs(): DynamicToolSpec[] {
+  return [
+    {
+      name: LINEAR_GRAPHQL_TOOL,
+      description: LINEAR_GRAPHQL_DESCRIPTION,
+      inputSchema: LINEAR_GRAPHQL_INPUT_SCHEMA,
+    },
+  ];
+}
+
 export async function executeLinearGraphqlTool(argumentsValue: unknown, context: LinearGraphqlContext): Promise<ToolResult> {
   const normalized = normalizeArguments(argumentsValue);
   if (!normalized.ok) {

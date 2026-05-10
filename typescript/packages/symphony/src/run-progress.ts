@@ -23,6 +23,8 @@ export interface RunProgressEventInput {
   threadId?: string | null;
   turnId?: string | null;
   toolName?: string | null;
+  eventName?: string | null;
+  details?: Record<string, unknown> | null;
 }
 
 export interface RunProgressEvent {
@@ -37,6 +39,8 @@ export interface RunProgressEvent {
   threadId: string | null;
   turnId: string | null;
   toolName: string | null;
+  eventName: string | null;
+  details: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -82,6 +86,8 @@ export function createRunProgressTracker(input: { clock?: () => string } = {}) {
       threadId: eventInput.threadId ?? previous?.threadId ?? null,
       turnId: eventInput.turnId ?? previous?.turnId ?? null,
       toolName: eventInput.toolName ?? null,
+      eventName: eventInput.eventName ?? null,
+      details: eventInput.details ?? null,
       createdAt: now,
     };
     events.push(event);

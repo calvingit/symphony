@@ -9,7 +9,7 @@ export interface ResolveConfigContext {
 
 export interface EffectiveConfig {
   tracker: {
-    kind: "linear";
+    kind: 'linear';
     endpoint: string;
     apiKey: string | undefined;
     projectSlug: string | undefined;
@@ -42,7 +42,7 @@ export interface EffectiveConfig {
     stallTimeoutMs: number;
     approvalPolicy: string | undefined;
     threadSandbox: string | undefined;
-    turnSandboxPolicy: string | undefined;
+    turnSandboxPolicy: Record<string, unknown> | string | undefined;
   };
 }
 
@@ -57,17 +57,17 @@ export function resolveConfig(raw: unknown, context: ResolveConfigContext): Effe
 
   return {
     tracker: {
-      kind: "linear",
-      endpoint: readString(tracker.endpoint) ?? "https://api.linear.app/graphql",
+      kind: 'linear',
+      endpoint: readString(tracker.endpoint) ?? 'https://api.linear.app/graphql',
       apiKey: resolveTrackerApiKey(readString(tracker.api_key), context.env),
       projectSlug: readString(tracker.project_slug),
-      activeStates: readStringArray(tracker.active_states) ?? ["Todo", "In Progress"],
+      activeStates: readStringArray(tracker.active_states) ?? ['Todo', 'In Progress'],
       terminalStates: readStringArray(tracker.terminal_states) ?? [
-        "Closed",
-        "Cancelled",
-        "Canceled",
-        "Duplicate",
-        "Done",
+        'Closed',
+        'Cancelled',
+        'Canceled',
+        'Duplicate',
+        'Done',
       ],
     },
     polling: {
@@ -90,13 +90,13 @@ export function resolveConfig(raw: unknown, context: ResolveConfigContext): Effe
       maxRetryBackoffMs: readPositiveInteger(agent.max_retry_backoff_ms) ?? 300000,
     },
     codex: {
-      command: readString(codex.command) ?? "codex app-server",
+      command: readString(codex.command) ?? 'codex app-server',
       turnTimeoutMs: readPositiveInteger(codex.turn_timeout_ms) ?? 3600000,
       readTimeoutMs: readPositiveInteger(codex.read_timeout_ms) ?? 5000,
       stallTimeoutMs: readPositiveInteger(codex.stall_timeout_ms) ?? 300000,
       approvalPolicy: readString(codex.approval_policy),
       threadSandbox: readString(codex.thread_sandbox),
-      turnSandboxPolicy: readString(codex.turn_sandbox_policy),
+      turnSandboxPolicy: readConfigValue(codex.turn_sandbox_policy),
     },
   };
 }
@@ -111,6 +111,18 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function readConfigValue<T extends string | Record<string, unknown>>(
+  value: unknown,
+): T | undefined {
+  if (typeof value === 'string') {
+    return value as T;
+  }
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return value as T;
+  }
+  return undefined;
 }
 
 function readStringArray(value: unknown): string[] | undefined {
