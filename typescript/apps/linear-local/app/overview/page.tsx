@@ -2,24 +2,31 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Navbar } from "../components/Navbar";
-import { KanbanBoard } from "../components/KanbanBoard";
-import { useKanbanStore } from "../lib/store";
+import { Navbar } from "../../components/Navbar";
+import { OverviewDashboard } from "../../components/OverviewDashboard";
+import { ProjectsDialog } from "../../components/ProjectsDialog";
+import { useKanbanStore } from "../../lib/store";
 
-export default function Page() {
+export default function OverviewPage() {
   return (
     <Suspense fallback={<PageShell />}>
-      <IssuesPageContent />
+      <OverviewPageContent />
     </Suspense>
   );
 }
 
-function IssuesPageContent() {
+function OverviewPageContent() {
   const {
+    addProject,
+    editProject,
     isLoading,
+    issues,
     loadIssues,
+    loadProjects,
     loadRuns,
     projects,
+    removeProject,
+    runs,
     selectedProjectSlug,
     selectProject,
   } = useKanbanStore();
@@ -30,11 +37,25 @@ function IssuesPageContent() {
   const projectFromUrl = searchParams.get("project");
 
   useEffect(() => {
+    void loadProjects();
+    loadRuns();
+    const timer = window.setInterval(() => {
+      void loadProjects();
+      loadRuns();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [loadProjects, loadRuns]);
+
+  useEffect(() => {
     if (!projectFromUrl || projectFromUrl === selectedProjectSlug) {
       return;
     }
     selectProject(projectFromUrl);
   }, [projectFromUrl, selectedProjectSlug, selectProject]);
+
+  useEffect(() => {
+    void loadIssues();
+  }, [loadIssues, selectedProjectSlug]);
 
   const hasProjectInList = useMemo(
     () =>
@@ -67,15 +88,19 @@ function IssuesPageContent() {
     selectedProjectSlug,
   ]);
 
+  const selectedProject =
+    projects.find((project) => project.slugId === selectedProjectSlug) ?? null;
+
   const handleRefresh = () => {
+    void loadProjects();
     void loadIssues();
     loadRuns();
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#f7f7f7]">
+    <div className="min-h-screen bg-[#f7f7f7]">
       <Navbar
-        activeView="issues"
+        activeView="overview"
         onRefresh={handleRefresh}
         isLoading={isLoading}
         projects={projects}
@@ -83,11 +108,24 @@ function IssuesPageContent() {
         onProjectChange={selectProject}
         onManageProjects={() => setProjectsOpen(true)}
       />
-      <KanbanBoard projectsOpen={projectsOpen} onProjectsClose={() => setProjectsOpen(false)} />
+      <OverviewDashboard
+        isLoading={isLoading}
+        issues={issues}
+        project={selectedProject}
+        runs={runs}
+      />
+      <ProjectsDialog
+        open={projectsOpen}
+        projects={projects}
+        onClose={() => setProjectsOpen(false)}
+        onCreate={addProject}
+        onUpdate={editProject}
+        onDelete={removeProject}
+      />
     </div>
   );
 }
 
 function PageShell() {
-  return <div className="h-screen bg-[#f7f7f7]" />;
+  return <div className="min-h-screen bg-[#f7f7f7]" />;
 }
