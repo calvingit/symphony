@@ -1,11 +1,9 @@
-const ENDPOINT = "http://localhost:3001/graphql";
-const TOKEN = "local-dev-token";
+const ENDPOINT = "/graphql";
 
 async function request<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: {
-      authorization: `Bearer ${TOKEN}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({ query, variables }),
@@ -29,6 +27,22 @@ export interface KanbanIssue {
   labels: { name: string }[];
   updatedAt: string | null;
   createdAt: string | null;
+}
+
+export interface RunProgress {
+  issueId: string;
+  identifier: string;
+  title: string;
+  attempt: number | null;
+  status: string;
+  message: string | null;
+  error: string | null;
+  threadId: string | null;
+  turnId: string | null;
+  toolName: string | null;
+  startedAt: string;
+  updatedAt: string;
+  finishedAt: string | null;
 }
 
 export async function fetchIssues(stateNames: string[]): Promise<KanbanIssue[]> {
@@ -59,7 +73,7 @@ export async function updateIssueState(id: string, stateName: string): Promise<v
 }
 
 export async function createIssue(title: string, state: string): Promise<KanbanIssue | null> {
-  const storeRes = await fetch("http://localhost:3001/api/issues", {
+  const storeRes = await fetch("/api/issues", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ title, state }),
@@ -80,4 +94,11 @@ export async function createIssue(title: string, state: string): Promise<KanbanI
     updatedAt: issue.updatedAt,
     createdAt: issue.createdAt,
   };
+}
+
+export async function fetchRunProgress(): Promise<RunProgress[]> {
+  const response = await fetch("/api/runs", { cache: "no-store" });
+  if (!response.ok) return [];
+  const body = await response.json();
+  return Array.isArray(body.runs) ? body.runs : [];
 }

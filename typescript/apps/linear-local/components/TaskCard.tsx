@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-import type { KanbanIssue } from "../lib/graphql";
+import type { KanbanIssue, RunProgress } from "../lib/graphql";
 
 const PRIORITY_COLORS: Record<number, string> = {
   0: "#9b9b9b",
@@ -27,9 +27,10 @@ const STATE_ICONS: Record<string, string> = {
 
 interface TaskCardProps {
   issue: KanbanIssue;
+  run?: RunProgress;
 }
 
-export function TaskCard({ issue }: TaskCardProps) {
+export function TaskCard({ issue, run }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: issue.id,
     data: { issue },
@@ -82,6 +83,40 @@ export function TaskCard({ issue }: TaskCardProps) {
       {updatedDate && (
         <p className="mt-2 text-xs text-gray-400">Updated {updatedDate}</p>
       )}
+
+      {run && (
+        <div className="mt-2 flex items-center justify-between gap-2 rounded bg-gray-50 px-2 py-1">
+          <span className="truncate text-xs font-medium text-gray-600">
+            {formatRunStatus(run.status)}
+          </span>
+          {run.attempt !== null && (
+            <span className="text-[11px] text-gray-400">#{run.attempt + 1}</span>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+function formatRunStatus(status: string): string {
+  switch (status) {
+    case "claimed":
+      return "Claimed";
+    case "preparing_workspace":
+      return "Preparing workspace";
+    case "running_hooks":
+      return "Running hooks";
+    case "running_codex":
+      return "Running Codex";
+    case "tool_call":
+      return "Tool call";
+    case "completed":
+      return "Completed";
+    case "failed":
+      return "Failed";
+    case "retrying":
+      return "Retrying";
+    default:
+      return status;
+  }
 }

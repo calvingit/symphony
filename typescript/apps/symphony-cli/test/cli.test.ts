@@ -12,4 +12,11 @@ describe("parseCliArgs", () => {
       port: 4010,
     });
   });
+
+  it("accepts pnpm script argument separator", () => {
+    expect(parseCliArgs(["--", "--port", "4010", "LOCAL_WORKFLOW.md"])).toEqual({
+      workflowPath: "LOCAL_WORKFLOW.md",
+      port: 4010,
+    });
+  });
 });

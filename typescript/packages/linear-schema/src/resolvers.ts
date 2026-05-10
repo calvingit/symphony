@@ -44,6 +44,8 @@ export const resolvers = {
     project: (issue: LocalIssue) => ({ id: `project-${issue.projectSlug}`, slugId: issue.projectSlug, name: issue.projectSlug }),
     labels: (issue: LocalIssue) => ({ nodes: issue.labels.map((name) => ({ id: `label-${name}`, name })) }),
     relations: () => ({ nodes: [] }),
-    comments: () => ({ nodes: [] }),
+    comments: async (issue: LocalIssue, _args: unknown, context: any) => ({
+      nodes: await context.store.listCommentsByIssueId(issue.id),
+    }),
   },
 };

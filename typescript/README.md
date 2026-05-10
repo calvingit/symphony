@@ -23,6 +23,9 @@ pnpm dev:linear
 
 Default bearer token: `local-dev-token`
 
+The local tracker currently uses an in-memory store in the Next.js process. Issues and comments are
+intended for local development only and are reset when the dev server restarts.
+
 ### Kanban board
 
 The web UI at `http://localhost:3001/` provides a drag-and-drop Kanban board matching Linear's
@@ -47,7 +50,7 @@ the REST endpoint since the schema does not yet define `issueCreate`.
 ## Run Symphony against local tracker
 
 ```bash
-pnpm --filter @symphony/symphony-cli dev -- ./WORKFLOW.local.md --port 4010
+pnpm --filter @symphony/symphony-cli dev -- --port 4010 ./WORKFLOW.local.md
 ```
 
 Status API:

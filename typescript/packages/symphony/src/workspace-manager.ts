@@ -1,5 +1,6 @@
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, rm, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
+import { runHook } from "./hook-runner.js";
 
 export interface Workspace {
   path: string;
@@ -31,6 +32,28 @@ export async function createWorkspaceForIssue(root: string, identifier: string):
   }
 
   return { path: workspacePath, workspaceKey, createdNow };
+}
+
+export async function cleanupWorkspaceForIssue(input: {
+  root: string;
+  identifier: string;
+  beforeRemove: string | null;
+  timeoutMs: number;
+}): Promise<void> {
+  const workspaceRoot = resolve(input.root);
+  const workspacePath = resolve(workspaceRoot, sanitizeWorkspaceKey(input.identifier));
+  assertInsideRoot(workspaceRoot, workspacePath);
+
+  try {
+    const existing = await stat(workspacePath);
+    if (!existing.isDirectory()) return;
+  } catch (error: any) {
+    if (error?.code === "ENOENT") return;
+    throw error;
+  }
+
+  await runHook({ script: input.beforeRemove, cwd: workspacePath, timeoutMs: input.timeoutMs });
+  await rm(workspacePath, { recursive: true, force: true });
 }
 
 export function assertInsideRoot(root: string, path: string): void {

@@ -11,18 +11,39 @@ export class LinearClient {
   ) {}
 
   async fetchCandidateIssues(activeStates: string[]): Promise<Issue[]> {
-    const body = await this.graphql({
-      query: `query SymphonyLinearPoll($projectSlug: String!, $stateNames: [String!]!, $first: Int!) {
-        issues(filter: { project: { slugId: { eq: $projectSlug } }, state: { name: { in: $stateNames } } }, first: $first) {
+    const issues: Issue[] = [];
+    let after: string | null = null;
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+      const body = await this.graphql({
+        query: `query SymphonyLinearPoll($projectSlug: String!, $stateNames: [String!]!, $first: Int!, $after: String) {
+        issues(filter: { project: { slugId: { eq: $projectSlug } }, state: { name: { in: $stateNames } } }, first: $first, after: $after) {
           nodes { id identifier title description priority branchName url createdAt updatedAt state { name } labels { nodes { name } } relations { nodes { type relatedIssue { id identifier state { name } } } } }
           pageInfo { hasNextPage endCursor }
         }
       }`,
-      variables: { projectSlug: this.input.projectSlug, stateNames: activeStates, first: 50 },
-    });
+        variables: { projectSlug: this.input.projectSlug, stateNames: activeStates, first: 50, after },
+      });
 
-    const nodes = body.data?.issues?.nodes;
-    return Array.isArray(nodes) ? nodes.map(normalizeIssue) : [];
+      const nodes = body.data?.issues?.nodes;
+      if (Array.isArray(nodes)) {
+        issues.push(...nodes.map(normalizeIssue));
+      }
+      hasNextPage = Boolean(body.data?.issues?.pageInfo?.hasNextPage);
+      after = body.data?.issues?.pageInfo?.endCursor ?? null;
+      if (hasNextPage && !after) {
+        throw new Error("linear_missing_end_cursor");
+      }
+    }
+
+    return issues;
+  }
+
+  async fetchIssuesByStates(stateNames: string): Promise<Issue[]>;
+  async fetchIssuesByStates(stateNames: string[]): Promise<Issue[]>;
+  async fetchIssuesByStates(stateNames: string | string[]): Promise<Issue[]> {
+    return this.fetchCandidateIssues(Array.isArray(stateNames) ? stateNames : [stateNames]);
   }
 
   async updateIssueState(id: string, stateName: string): Promise<void> {
@@ -38,7 +59,7 @@ export class LinearClient {
     if (ids.length === 0) return new Map();
     const body = await this.graphql({
       query: `query Nodes($ids: [ID!]!) {
-        nodes(ids: $ids) { id identifier title state { name } }
+        nodes(ids: $ids) { id identifier title description priority branchName url createdAt updatedAt state { name } labels { nodes { name } } relations { nodes { type relatedIssue { id identifier state { name } } } } }
       }`,
       variables: { ids },
     });

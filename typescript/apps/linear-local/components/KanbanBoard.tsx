@@ -18,7 +18,7 @@ import { useKanbanStore, COLUMNS } from "../lib/store";
 import type { KanbanIssue } from "../lib/graphql";
 
 export function KanbanBoard() {
-  const { issues, visibleColumns, loadIssues, moveIssue, addIssue, toggleColumn } =
+  const { issues, visibleColumns, runs, loadIssues, loadRuns, moveIssue, addIssue, toggleColumn } =
     useKanbanStore();
 
   const [activeIssue, setActiveIssue] = useState<KanbanIssue | null>(null);
@@ -30,7 +30,13 @@ export function KanbanBoard() {
 
   useEffect(() => {
     loadIssues();
-  }, [loadIssues]);
+    loadRuns();
+    const timer = window.setInterval(() => {
+      loadIssues();
+      loadRuns();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [loadIssues, loadRuns]);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -75,6 +81,7 @@ export function KanbanBoard() {
                   key={col.id}
                   columnId={col.id}
                   issues={issues.filter((i: KanbanIssue) => i.state === col.id)}
+                  runs={runs}
                   onCreateClick={setCreateColumn}
                 />
               ))}
@@ -87,7 +94,7 @@ export function KanbanBoard() {
         <DragOverlay>
           {activeIssue && (
             <div className="rotate-2 opacity-90">
-              <TaskCard issue={activeIssue} />
+              <TaskCard issue={activeIssue} run={runs[activeIssue.id]} />
             </div>
           )}
         </DragOverlay>

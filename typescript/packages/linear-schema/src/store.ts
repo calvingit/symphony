@@ -30,6 +30,7 @@ export interface LocalLinearStore {
   updateIssue(id: string, input: Partial<Pick<LocalIssue, "title" | "description" | "priority" | "state" | "branchName" | "url" | "labels">>): Promise<LocalIssue | null>;
   createComment(issueId: string, body: string): Promise<{ id: string; issueId: string; body: string; createdAt: string; updatedAt: string } | null>;
   updateComment(id: string, body: string): Promise<{ id: string; issueId: string; body: string; createdAt: string; updatedAt: string } | null>;
+  listCommentsByIssueId(issueId: string): Promise<Array<{ id: string; issueId: string; body: string; createdAt: string; updatedAt: string }>>;
 }
 
 export function createInMemoryStore(): LocalLinearStore {
@@ -67,8 +68,11 @@ export function createInMemoryStore(): LocalLinearStore {
         const stateMatches = input.stateNames ? input.stateNames.includes(issue.state) : true;
         return projectMatches && stateMatches;
       });
-      const nodes = all.slice(0, input.first);
-      return { nodes, endCursor: null, hasNextPage: all.length > nodes.length };
+      const start = parseCursor(input.after);
+      const nodes = all.slice(start, start + input.first);
+      const nextOffset = start + nodes.length;
+      const hasNextPage = nextOffset < all.length;
+      return { nodes, endCursor: hasNextPage ? String(nextOffset) : null, hasNextPage };
     },
     async getIssuesByIds(ids) {
       return ids.map((id) => issues.get(id)).filter((issue): issue is LocalIssue => Boolean(issue));
@@ -98,5 +102,14 @@ export function createInMemoryStore(): LocalLinearStore {
       comments.set(id, updated);
       return updated;
     },
+    async listCommentsByIssueId(issueId) {
+      return [...comments.values()].filter((comment) => comment.issueId === issueId);
+    },
   };
+}
+
+function parseCursor(after: string | null | undefined): number {
+  if (!after) return 0;
+  const parsed = Number.parseInt(after, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 }

@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { KanbanIssue } from "./graphql";
-import { createIssue, fetchIssues, updateIssueState } from "./graphql";
+import type { KanbanIssue, RunProgress } from "./graphql";
+import { createIssue, fetchIssues, fetchRunProgress, updateIssueState } from "./graphql";
 
 export const COLUMNS = [
   { id: "Backlog", label: "Backlog", color: "#6b6b6b" },
@@ -19,8 +19,10 @@ const DEFAULT_VISIBLE = ["Backlog", "Todo", "In Progress", "Human Review"];
 interface KanbanStore {
   issues: KanbanIssue[];
   visibleColumns: string[];
+  runs: Record<string, RunProgress>;
   isLoading: boolean;
   loadIssues: () => Promise<void>;
+  loadRuns: () => Promise<void>;
   moveIssue: (issueId: string, newState: string) => Promise<void>;
   addIssue: (title: string, state: string) => Promise<void>;
   toggleColumn: (columnId: string) => void;
@@ -29,6 +31,7 @@ interface KanbanStore {
 export const useKanbanStore = create<KanbanStore>((set, get) => ({
   issues: [],
   visibleColumns: DEFAULT_VISIBLE,
+  runs: {},
   isLoading: false,
 
   loadIssues: async () => {
@@ -36,6 +39,11 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
     const allStates = COLUMNS.map((c) => c.id);
     const issues = await fetchIssues(allStates);
     set({ issues, isLoading: false });
+  },
+
+  loadRuns: async () => {
+    const runs = await fetchRunProgress();
+    set({ runs: Object.fromEntries(runs.map((run) => [run.issueId, run])) });
   },
 
   moveIssue: async (issueId, newState) => {

@@ -98,6 +98,16 @@ export function createSqliteStore(path: string): LocalLinearStore {
       db.prepare("update comments set body = ?, updated_at = ? where id = ?").run(body, updatedAt, id);
       return { id, issueId: row.issue_id, body, createdAt: row.created_at, updatedAt };
     },
+    async listCommentsByIssueId(issueId) {
+      const rows = db.prepare("select * from comments where issue_id = ? order by created_at asc").all(issueId) as SqliteCommentRow[];
+      return rows.map((row) => ({
+        id: row.id,
+        issueId: row.issue_id,
+        body: row.body,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+    },
   };
 }
 

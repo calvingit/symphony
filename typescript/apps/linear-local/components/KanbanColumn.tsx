@@ -4,16 +4,17 @@ import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Plus, MoreHorizontal } from "lucide-react";
 import { TaskCard } from "./TaskCard";
-import type { KanbanIssue } from "../lib/graphql";
+import type { KanbanIssue, RunProgress } from "../lib/graphql";
 import { COLUMNS } from "../lib/store";
 
 interface KanbanColumnProps {
   columnId: string;
   issues: KanbanIssue[];
+  runs: Record<string, RunProgress>;
   onCreateClick: (columnId: string) => void;
 }
 
-export function KanbanColumn({ columnId, issues, onCreateClick }: KanbanColumnProps) {
+export function KanbanColumn({ columnId, issues, runs, onCreateClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: columnId });
   const column = COLUMNS.find((c: { id: string; label: string; color: string }) => c.id === columnId);
   const color = column?.color ?? "#6b6b6b";
@@ -49,7 +50,7 @@ export function KanbanColumn({ columnId, issues, onCreateClick }: KanbanColumnPr
       >
         <SortableContext items={issues.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {issues.map((issue) => (
-            <TaskCard key={issue.id} issue={issue} />
+            <TaskCard key={issue.id} issue={issue} run={runs[issue.id]} />
           ))}
         </SortableContext>
       </div>

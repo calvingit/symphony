@@ -26,7 +26,7 @@ agent:
   max_concurrent_agents: 1
   max_turns: 1
 codex:
-  command: node -e "console.log(JSON.stringify({method:'thread/started',params:{threadId:'thread-local'}})); console.log(JSON.stringify({method:'turn/completed',params:{turnId:'turn-local'}}));"
+  command: node -e "console.log(JSON.stringify({method:'thread/started',params:{threadId:'thread-local'}})); setTimeout(() => { console.log(JSON.stringify({method:'turn/completed',params:{threadId:'thread-local',turnId:'turn-local'}})); }, 8000);"
 ---
 
 You are working on local issue {{ issue.identifier }}.

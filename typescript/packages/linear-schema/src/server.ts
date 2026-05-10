@@ -7,12 +7,12 @@ export interface LocalLinearContext {
   store: LocalLinearStore;
 }
 
-export function createLinearGraphqlServer(input: { store: LocalLinearStore; token: string }) {
+export function createLinearGraphqlServer(input: { store: LocalLinearStore; token: string; allowUnauthenticatedLocal?: boolean }) {
   return createYoga<LocalLinearContext>({
     schema: createSchema({ typeDefs, resolvers }),
     context: ({ request }) => {
       const auth = request.headers.get("authorization");
-      if (auth !== `Bearer ${input.token}`) {
+      if (!input.allowUnauthenticatedLocal && auth !== `Bearer ${input.token}`) {
         throw new Error("unauthorized");
       }
       return { store: input.store };

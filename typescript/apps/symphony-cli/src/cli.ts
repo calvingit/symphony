@@ -7,12 +7,13 @@ export interface CliArgs {
 }
 
 export function parseCliArgs(argv: string[]): CliArgs {
+  const userArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const program = new Command();
   program
     .argument("[workflowPath]", "path to WORKFLOW.md", "WORKFLOW.md")
     .option("--port <port>", "status API port", (value) => Number(value), null)
     .exitOverride();
-  program.parse(argv, { from: "user" });
+  program.parse(userArgv, { from: "user" });
   const opts = program.opts<{ port: number | null }>();
   return { workflowPath: program.args[0] ?? "WORKFLOW.md", port: opts.port };
 }
