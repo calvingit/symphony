@@ -1,6 +1,15 @@
 import { create } from "zustand";
-import type { KanbanIssue, RunProgress } from "./graphql";
-import { createIssue, fetchIssues, fetchRunProgress, updateIssueState } from "./graphql";
+import type { KanbanIssue, ProjectRecord, ProjectWorkspace, RunProgress } from "./graphql";
+import {
+  createIssue,
+  createProject,
+  deleteProject,
+  fetchIssues,
+  fetchProjects,
+  fetchRunProgress,
+  updateIssueState,
+  updateProject,
+} from "./graphql";
 
 export const COLUMNS = [
   { id: "Backlog", label: "Backlog", color: "#6b6b6b" },
@@ -17,27 +26,54 @@ export const COLUMNS = [
 const DEFAULT_VISIBLE = ["Backlog", "Todo", "In Progress", "Human Review"];
 
 interface KanbanStore {
+  projects: ProjectRecord[];
+  selectedProjectSlug: string | null;
   issues: KanbanIssue[];
   visibleColumns: string[];
   runs: Record<string, RunProgress>;
   isLoading: boolean;
+  loadProjects: () => Promise<void>;
   loadIssues: () => Promise<void>;
   loadRuns: () => Promise<void>;
   moveIssue: (issueId: string, newState: string) => Promise<void>;
-  addIssue: (title: string, state: string) => Promise<void>;
+  addIssue: (input: { title: string; description: string; state: string }) => Promise<void>;
+  selectProject: (slugId: string) => void;
+  addProject: (input: { slugId: string; name: string; workspace: ProjectWorkspace }) => Promise<void>;
+  editProject: (
+    slugId: string,
+    input: { name?: string; workspace?: ProjectWorkspace },
+  ) => Promise<void>;
+  removeProject: (slugId: string) => Promise<void>;
   toggleColumn: (columnId: string) => void;
 }
 
 export const useKanbanStore = create<KanbanStore>((set, get) => ({
+  projects: [],
+  selectedProjectSlug: null,
   issues: [],
   visibleColumns: DEFAULT_VISIBLE,
   runs: {},
   isLoading: false,
 
+  loadProjects: async () => {
+    const projects = await fetchProjects();
+    const current = get().selectedProjectSlug;
+    const nextSelected =
+      current && projects.some((project) => project.slugId === current)
+        ? current
+        : projects[0]?.slugId ?? null;
+    set({ projects, selectedProjectSlug: nextSelected });
+  },
+
   loadIssues: async () => {
+    const projectSlug = get().selectedProjectSlug;
+    if (!projectSlug) {
+      set({ issues: [], isLoading: false });
+      return;
+    }
     set({ isLoading: true });
     const allStates = COLUMNS.map((c) => c.id);
-    const issues = await fetchIssues(allStates);
+    const issues = await fetchIssues(projectSlug, allStates);
     set({ issues, isLoading: false });
   },
 
@@ -58,11 +94,48 @@ export const useKanbanStore = create<KanbanStore>((set, get) => ({
     }
   },
 
-  addIssue: async (title, state) => {
-    const issue = await createIssue(title, state);
+  addIssue: async ({ title, description, state }) => {
+    const projectSlug = get().selectedProjectSlug;
+    if (!projectSlug) return;
+    const issue = await createIssue({ title, description, stateName: state, projectSlug });
     if (issue) {
       set({ issues: [...get().issues, issue] });
     }
+  },
+
+  selectProject: (slugId) => {
+    set({ selectedProjectSlug: slugId });
+  },
+
+  addProject: async (input) => {
+    const project = await createProject(input);
+    if (!project) return;
+    set({
+      projects: [...get().projects, project].sort((a, b) => a.slugId.localeCompare(b.slugId)),
+      selectedProjectSlug: project.slugId,
+      issues: [],
+    });
+  },
+
+  editProject: async (slugId, input) => {
+    const project = await updateProject(slugId, input);
+    if (!project) return;
+    set({
+      projects: get().projects.map((existing) => (existing.slugId === slugId ? project : existing)),
+    });
+  },
+
+  removeProject: async (slugId) => {
+    const success = await deleteProject(slugId);
+    if (!success) return;
+    const projects = get().projects.filter((project) => project.slugId !== slugId);
+    const selectedProjectSlug =
+      get().selectedProjectSlug === slugId ? projects[0]?.slugId ?? null : get().selectedProjectSlug;
+    set({
+      projects,
+      selectedProjectSlug,
+      issues: get().selectedProjectSlug === slugId ? [] : get().issues,
+    });
   },
 
   toggleColumn: (columnId) => {

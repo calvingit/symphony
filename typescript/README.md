@@ -21,6 +21,21 @@ Or start the full local stack with one command:
 make dev
 ```
 
+`make dev` defaults to the real `codex app-server` via `WORKFLOW.local.md`, so token, auth, and
+quota failures surface normally in the status API.
+
+The default local workflow creates deterministic per-issue workspaces under
+`tmp/workspaces/<ISSUE_IDENTIFIER>`, clones the Git repo configured on the selected project, and
+checks out `issue.branchName` or the project's default branch.
+
+Hook scripts now receive `SYMPHONY_WORKSPACE_PATH`, `SYMPHONY_WORKSPACE_KEY`,
+`SYMPHONY_ISSUE_ID`, `SYMPHONY_ISSUE_IDENTIFIER`, `SYMPHONY_ISSUE_TITLE`,
+`SYMPHONY_ISSUE_DESCRIPTION`, `SYMPHONY_ISSUE_STATE`,
+`SYMPHONY_ISSUE_BRANCH_NAME`, `SYMPHONY_ISSUE_URL`, `SYMPHONY_PROJECT_SLUG`,
+`SYMPHONY_PROJECT_NAME`, `SYMPHONY_PROJECT_WORKSPACE_KIND`, `SYMPHONY_PROJECT_LOCAL_PATH`,
+`SYMPHONY_PROJECT_REMOTE_URL`, `SYMPHONY_PROJECT_BASE_BRANCH`, and `SYMPHONY_ATTEMPT`, so you can
+customize repo hydration in `after_create` / `before_run`.
+
 Useful Make targets:
 
 ```bash
@@ -31,16 +46,22 @@ make logs      # tail tmp/dev/*.log
 make stop      # stop services started by the Makefile
 ```
 
+Use the stub workflow only when you explicitly want a fake local Codex:
+
+```bash
+make dev WORKFLOW_FILE=./WORKFLOW.local.stub.md
+```
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `http://localhost:3001/` | GET | Kanban board UI |
 | `http://localhost:3001/graphql` | POST | Linear-compatible GraphQL API |
-| `http://localhost:3001/api/issues` | POST | Issue creation (JSON: `{title, state}`) |
+| `http://localhost:3001/api/issues` | POST | Compatibility issue creation (JSON: `{title, description, state, projectSlug}`) |
 
 Default bearer token: `local-dev-token`
 
-The local tracker currently uses an in-memory store in the Next.js process. Issues and comments are
-intended for local development only and are reset when the dev server restarts.
+The local tracker now persists projects, issues, and comments in SQLite at
+`typescript/tmp/linear-local.db` by default. Override with `LINEAR_LOCAL_DB_PATH=/absolute/path.db`.
 
 ### Kanban board
 
@@ -52,7 +73,9 @@ design:
 - **Task cards** — identifier (monospace), title (2-line clamp), state color dot, priority indicator,
   "Updated" date
 - **Drag & drop** — `PointerSensor` with 5 px activation distance, visual overlay on drag
-- **Create task** — "+" button or "New task" at column bottom, modal dialog with form submit
+- **Projects** — switch between projects in the navbar, manage project CRUD and workspace source
+- **Create task** — "+" button or "New task" at column bottom, modal dialog with `title +
+  description`
 - **Column management** — right sidebar "Hidden columns" toggle to show/hide workflow states
 
 Tech stack: React 19, Next.js 15 App Router, Tailwind CSS v4, `@dnd-kit/core` +
@@ -60,8 +83,12 @@ Tech stack: React 19, Next.js 15 App Router, Tailwind CSS v4, `@dnd-kit/core` +
 
 ### GraphQL API
 
-Linear-compatible schema with `issues` query and `issueUpdate` mutation. Issue creation goes through
-the REST endpoint since the schema does not yet define `issueCreate`.
+Linear-compatible schema with project CRUD, `issues` query, `issueCreate`, and `issueUpdate`.
+
+Each project carries a workspace config:
+
+- `local` — clone from a local Git repo path
+- `remote` — clone from a remote Git URL and default branch
 
 ## Run Symphony against local tracker
 

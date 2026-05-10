@@ -23,11 +23,17 @@ export async function runAgentAttempt(input: {
     input.config.workspace.root,
     input.issue.identifier,
   );
+  const hookEnv = buildHookEnv({
+    issue: input.issue,
+    attempt: input.attempt,
+    workspace,
+  });
   if (workspace.createdNow) {
     emit('running_hooks', { message: 'after_create' });
     const afterCreate = await runHook({
       script: input.config.hooks.afterCreate,
       cwd: workspace.path,
+      env: hookEnv,
       timeoutMs: input.config.hooks.timeoutMs,
     });
     if (!afterCreate.ok) {
@@ -40,6 +46,7 @@ export async function runAgentAttempt(input: {
   const beforeRun = await runHook({
     script: input.config.hooks.beforeRun,
     cwd: workspace.path,
+    env: hookEnv,
     timeoutMs: input.config.hooks.timeoutMs,
   });
   if (!beforeRun.ok) {
@@ -81,6 +88,7 @@ export async function runAgentAttempt(input: {
   await runHook({
     script: input.config.hooks.afterRun,
     cwd: workspace.path,
+    env: hookEnv,
     timeoutMs: input.config.hooks.timeoutMs,
   });
   if (turn.status === 'completed') {
@@ -94,6 +102,34 @@ export async function runAgentAttempt(input: {
     eventName: turn.status === 'timed_out' ? 'codex.turn.timed_out' : 'codex.turn.failed',
   });
   return { status: 'failed', error: turn.error ?? turn.status };
+}
+
+function buildHookEnv(input: {
+  issue: Issue;
+  attempt: number | null;
+  workspace: { path: string; workspaceKey: string; createdNow: boolean };
+}): Record<string, string | undefined> {
+  return {
+    SYMPHONY_WORKSPACE_PATH: input.workspace.path,
+    SYMPHONY_WORKSPACE_KEY: input.workspace.workspaceKey,
+    SYMPHONY_WORKSPACE_CREATED_NOW: input.workspace.createdNow ? '1' : '0',
+    SYMPHONY_ISSUE_ID: input.issue.id,
+    SYMPHONY_ISSUE_IDENTIFIER: input.issue.identifier,
+    SYMPHONY_ISSUE_TITLE: input.issue.title,
+    SYMPHONY_ISSUE_DESCRIPTION: input.issue.description ?? undefined,
+    SYMPHONY_ISSUE_STATE: input.issue.state,
+    SYMPHONY_ISSUE_BRANCH_NAME: input.issue.branchName ?? undefined,
+    SYMPHONY_ISSUE_URL: input.issue.url ?? undefined,
+    SYMPHONY_ISSUE_PRIORITY:
+      typeof input.issue.priority === 'number' ? String(input.issue.priority) : undefined,
+    SYMPHONY_PROJECT_SLUG: input.issue.project?.slugId ?? undefined,
+    SYMPHONY_PROJECT_NAME: input.issue.project?.name ?? undefined,
+    SYMPHONY_PROJECT_WORKSPACE_KIND: input.issue.project?.workspace.kind ?? undefined,
+    SYMPHONY_PROJECT_LOCAL_PATH: input.issue.project?.workspace.localPath ?? undefined,
+    SYMPHONY_PROJECT_REMOTE_URL: input.issue.project?.workspace.remoteUrl ?? undefined,
+    SYMPHONY_PROJECT_BASE_BRANCH: input.issue.project?.workspace.baseBranch ?? undefined,
+    SYMPHONY_ATTEMPT: input.attempt === null ? undefined : String(input.attempt),
+  };
 }
 
 function forwardCodexEvent(

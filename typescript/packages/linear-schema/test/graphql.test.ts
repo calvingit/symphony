@@ -3,6 +3,56 @@ import { createLinearGraphqlServer } from "../src/server.js";
 import { createInMemoryStore } from "../src/store.js";
 
 describe("local Linear GraphQL", () => {
+  it("supports project CRUD with workspace configuration", async () => {
+    const store = createInMemoryStore();
+    const server = createLinearGraphqlServer({ store, token: "local-dev-token" });
+
+    const create = await server.fetch("http://local/graphql", {
+      method: "POST",
+      headers: { authorization: "Bearer local-dev-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `mutation CreateProject($input: ProjectCreateInput!) {
+          projectCreate(input: $input) {
+            success
+            project { slugId name workspace { kind localPath remoteUrl baseBranch } }
+          }
+        }`,
+        variables: {
+          input: {
+            slugId: "repo-a",
+            name: "Repo A",
+            workspace: {
+              kind: "remote",
+              localPath: null,
+              remoteUrl: "https://example.com/repo-a.git",
+              baseBranch: "main",
+            },
+          },
+        },
+      }),
+    });
+    const createBody = await create.json();
+    expect(createBody.data.projectCreate.project.workspace.remoteUrl).toBe(
+      "https://example.com/repo-a.git",
+    );
+
+    const list = await server.fetch("http://local/graphql", {
+      method: "POST",
+      headers: { authorization: "Bearer local-dev-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `query Projects { projects { slugId name workspace { kind baseBranch } } }`,
+      }),
+    });
+    const listBody = await list.json();
+    expect(listBody.data.projects).toEqual([
+      {
+        slugId: "repo-a",
+        name: "Repo A",
+        workspace: { kind: "remote", baseBranch: "main" },
+      },
+    ]);
+  });
+
   it("returns candidate issues filtered by project slug and state names", async () => {
     const store = createInMemoryStore();
     await store.seedDefaultProject("symphony-local");
@@ -94,5 +144,59 @@ describe("local Linear GraphQL", () => {
 
     const body = await response.json();
     expect(body.data.issue.comments.nodes).toEqual([{ body: "workpad" }]);
+  });
+
+  it("creates issues with description inside the selected project", async () => {
+    const store = createInMemoryStore();
+    await store.createProject({
+      slugId: "repo-b",
+      name: "Repo B",
+      workspace: {
+        kind: "local",
+        localPath: "/tmp/repo-b",
+        remoteUrl: null,
+        baseBranch: "develop",
+      },
+    });
+    const server = createLinearGraphqlServer({ store, token: "local-dev-token" });
+
+    const response = await server.fetch("http://local/graphql", {
+      method: "POST",
+      headers: { authorization: "Bearer local-dev-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `mutation CreateIssue($input: IssueCreateInput!) {
+          issueCreate(input: $input) {
+            success
+            issue {
+              title
+              description
+              project { slugId workspace { kind localPath baseBranch } }
+            }
+          }
+        }`,
+        variables: {
+          input: {
+            title: "Implement workspace selector",
+            description: "Need CRUD for project workspaces",
+            stateName: "Todo",
+            projectSlug: "repo-b",
+          },
+        },
+      }),
+    });
+
+    const body = await response.json();
+    expect(body.data.issueCreate.issue).toEqual({
+      title: "Implement workspace selector",
+      description: "Need CRUD for project workspaces",
+      project: {
+        slugId: "repo-b",
+        workspace: {
+          kind: "local",
+          localPath: "/tmp/repo-b",
+          baseBranch: "develop",
+        },
+      },
+    });
   });
 });

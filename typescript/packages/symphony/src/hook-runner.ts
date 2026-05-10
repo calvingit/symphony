@@ -9,7 +9,12 @@ export interface HookResult {
   timedOut: boolean;
 }
 
-export function runHook(input: { script: string | null; cwd: string; timeoutMs: number }): Promise<HookResult> {
+export function runHook(input: {
+  script: string | null;
+  cwd: string;
+  timeoutMs: number;
+  env?: Record<string, string | undefined>;
+}): Promise<HookResult> {
   if (!input.script) {
     return Promise.resolve({ ok: true, exitCode: 0, signal: null, stdout: "", stderr: "", timedOut: false });
   }
@@ -17,7 +22,11 @@ export function runHook(input: { script: string | null; cwd: string; timeoutMs: 
   const script = input.script;
 
   return new Promise((resolve) => {
-    const child = spawn("bash", ["-lc", script], { cwd: input.cwd, stdio: ["ignore", "pipe", "pipe"] }) as import("node:child_process").ChildProcess;
+    const child = spawn("bash", ["-lc", script], {
+      cwd: input.cwd,
+      env: mergeHookEnv(input.env),
+      stdio: ["ignore", "pipe", "pipe"],
+    }) as import("node:child_process").ChildProcess;
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -37,4 +46,15 @@ export function runHook(input: { script: string | null; cwd: string; timeoutMs: 
       resolve({ ok: exitCode === 0 && !timedOut, exitCode, signal, stdout, stderr, timedOut });
     });
   });
+}
+
+function mergeHookEnv(
+  env: Record<string, string | undefined> | undefined,
+): NodeJS.ProcessEnv {
+  if (!env) {
+    return process.env;
+  }
+  return Object.fromEntries(
+    Object.entries({ ...process.env, ...env }).filter(([, value]) => value !== undefined),
+  );
 }

@@ -14,29 +14,48 @@ import { KanbanColumn } from "./KanbanColumn";
 import { TaskCard } from "./TaskCard";
 import { HiddenColumns } from "./HiddenColumns";
 import { CreateTaskDialog } from "./CreateTaskDialog";
+import { ProjectsDialog } from "./ProjectsDialog";
 import { useKanbanStore, COLUMNS } from "../lib/store";
 import type { KanbanIssue } from "../lib/graphql";
 
-export function KanbanBoard() {
-  const { issues, visibleColumns, runs, loadIssues, loadRuns, moveIssue, addIssue, toggleColumn } =
-    useKanbanStore();
+export function KanbanBoard(props: { projectsOpen: boolean; onProjectsClose: () => void }) {
+  const {
+    projects,
+    selectedProjectSlug,
+    issues,
+    visibleColumns,
+    runs,
+    loadProjects,
+    loadIssues,
+    loadRuns,
+    moveIssue,
+    addIssue,
+    selectProject,
+    addProject,
+    editProject,
+    removeProject,
+    toggleColumn,
+  } = useKanbanStore();
 
   const [activeIssue, setActiveIssue] = useState<KanbanIssue | null>(null);
   const [createColumn, setCreateColumn] = useState<string | null>(null);
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
   useEffect(() => {
-    loadIssues();
+    void loadProjects();
     loadRuns();
     const timer = window.setInterval(() => {
-      loadIssues();
+      void loadProjects();
       loadRuns();
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [loadIssues, loadRuns]);
+  }, [loadProjects, loadRuns]);
+
+  useEffect(() => {
+    void loadIssues();
+  }, [loadIssues, selectedProjectSlug]);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -62,13 +81,15 @@ export function KanbanBoard() {
   );
 
   const handleCreate = useCallback(
-    async (title: string, state: string) => {
-      await addIssue(title, state);
+    async (input: { title: string; description: string; state: string }) => {
+      await addIssue(input);
     },
     [addIssue],
   );
 
   const visibleColumnDefs = COLUMNS.filter((c: { id: string }) => visibleColumns.includes(c.id));
+  const selectedProject =
+    projects.find((project) => project.slugId === selectedProjectSlug) ?? null;
 
   return (
     <>
@@ -102,9 +123,19 @@ export function KanbanBoard() {
 
       <CreateTaskDialog
         columnId={createColumn ?? ""}
+        projectName={selectedProject?.name ?? null}
         open={createColumn !== null}
         onClose={() => setCreateColumn(null)}
         onCreate={handleCreate}
+      />
+
+      <ProjectsDialog
+        open={props.projectsOpen}
+        projects={projects}
+        onClose={props.onProjectsClose}
+        onCreate={addProject}
+        onUpdate={editProject}
+        onDelete={removeProject}
       />
     </>
   );

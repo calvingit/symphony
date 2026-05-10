@@ -11,7 +11,16 @@ describe("local tracker smoke path", () => {
     expect(root).toContain("symphony-smoke-");
 
     const store = createInMemoryStore();
-    await store.seedDefaultProject("symphony-local");
+    await store.createProject({
+      slugId: "symphony-local",
+      name: "Symphony Local",
+      workspace: {
+        kind: "local",
+        localPath: root,
+        remoteUrl: null,
+        baseBranch: "main",
+      },
+    });
     await store.createIssue({ identifier: "LOC-1", title: "Smoke issue", state: "Todo", projectSlug: "symphony-local" });
     const server = createLinearGraphqlServer({ store, token: "local-dev-token" });
     const client = new LinearClient({
@@ -24,5 +33,15 @@ describe("local tracker smoke path", () => {
     const issues = await client.fetchCandidateIssues(["Todo"]);
 
     expect(issues.map((issue) => issue.identifier)).toEqual(["LOC-1"]);
+    expect(issues[0]?.project).toEqual({
+      slugId: "symphony-local",
+      name: "Symphony Local",
+      workspace: {
+        kind: "local",
+        localPath: root,
+        remoteUrl: null,
+        baseBranch: "main",
+      },
+    });
   });
 });

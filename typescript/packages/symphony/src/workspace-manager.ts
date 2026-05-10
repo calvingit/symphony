@@ -52,7 +52,16 @@ export async function cleanupWorkspaceForIssue(input: {
     throw error;
   }
 
-  await runHook({ script: input.beforeRemove, cwd: workspacePath, timeoutMs: input.timeoutMs });
+  await runHook({
+    script: input.beforeRemove,
+    cwd: workspacePath,
+    timeoutMs: input.timeoutMs,
+    env: {
+      SYMPHONY_WORKSPACE_PATH: workspacePath,
+      SYMPHONY_WORKSPACE_KEY: sanitizeWorkspaceKey(input.identifier),
+      SYMPHONY_ISSUE_IDENTIFIER: input.identifier,
+    },
+  });
   await rm(workspacePath, { recursive: true, force: true });
 }
 

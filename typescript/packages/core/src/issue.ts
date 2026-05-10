@@ -4,6 +4,19 @@ export interface BlockerRef {
   state: string | null;
 }
 
+export interface ProjectWorkspaceRef {
+  kind: "local" | "remote";
+  localPath: string | null;
+  remoteUrl: string | null;
+  baseBranch: string | null;
+}
+
+export interface ProjectRef {
+  slugId: string;
+  name: string;
+  workspace: ProjectWorkspaceRef;
+}
+
 export interface Issue {
   id: string;
   identifier: string;
@@ -15,6 +28,7 @@ export interface Issue {
   url: string | null;
   labels: string[];
   blockedBy: BlockerRef[];
+  project?: ProjectRef | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

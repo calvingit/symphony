@@ -1,6 +1,13 @@
 import { randomUUID } from "node:crypto";
 import Database from "better-sqlite3";
-import type { CreateIssueInput, LocalIssue, LocalLinearStore } from "./store.js";
+import type {
+  CreateIssueInput,
+  CreateProjectInput,
+  LocalIssue,
+  LocalLinearStore,
+  LocalProject,
+  LocalProjectWorkspace,
+} from "./store.js";
 
 export function createSqliteStore(path: string): LocalLinearStore {
   const db = new Database(path);
@@ -8,7 +15,11 @@ export function createSqliteStore(path: string): LocalLinearStore {
   db.exec(`
     create table if not exists projects (
       slug_id text primary key,
-      name text not null
+      name text not null,
+      workspace_kind text not null,
+      local_path text,
+      remote_url text,
+      base_branch text
     );
     create table if not exists issues (
       id text primary key,
@@ -35,15 +46,89 @@ export function createSqliteStore(path: string): LocalLinearStore {
 
   return {
     async seedDefaultProject(slugId) {
-      db.prepare("insert or ignore into projects (slug_id, name) values (?, ?)").run(slugId, slugId);
+      db.prepare(`
+        insert or ignore into projects (slug_id, name, workspace_kind, local_path, remote_url, base_branch)
+        values (?, ?, 'local', null, null, 'main')
+      `).run(slugId, slugId);
+    },
+    async listProjects() {
+      const rows = db
+        .prepare("select * from projects order by slug_id asc")
+        .all() as SqliteProjectRow[];
+      return rows.map(rowToProject);
+    },
+    async getProjectBySlug(slugId) {
+      const row = db.prepare("select * from projects where slug_id = ?").get(slugId) as
+        | SqliteProjectRow
+        | undefined;
+      return row ? rowToProject(row) : null;
+    },
+    async createProject(input: CreateProjectInput) {
+      const project = toProjectRow(input);
+      db.prepare(`
+        insert into projects (slug_id, name, workspace_kind, local_path, remote_url, base_branch)
+        values (@slugId, @name, @workspaceKind, @localPath, @remoteUrl, @baseBranch)
+      `).run(project);
+      return {
+        id: `project-${project.slugId}`,
+        slugId: project.slugId,
+        name: project.name,
+        workspace: {
+          kind: project.workspaceKind,
+          localPath: project.localPath,
+          remoteUrl: project.remoteUrl,
+          baseBranch: project.baseBranch,
+        },
+      };
+    },
+    async updateProject(slugId, input) {
+      const existing = db.prepare("select * from projects where slug_id = ?").get(slugId) as
+        | SqliteProjectRow
+        | undefined;
+      if (!existing) return null;
+      const current = rowToProject(existing);
+      const next: LocalProject = {
+        ...current,
+        name: input.name ?? current.name,
+        workspace: input.workspace ? { ...input.workspace } : current.workspace,
+      };
+      db.prepare(`
+        update projects
+        set name = @name,
+            workspace_kind = @workspaceKind,
+            local_path = @localPath,
+            remote_url = @remoteUrl,
+            base_branch = @baseBranch
+        where slug_id = @slugId
+      `).run(toProjectRow(next));
+      return next;
+    },
+    async deleteProject(slugId) {
+      const issueIds = db
+        .prepare("select id from issues where project_slug = ?")
+        .all(slugId) as Array<{ id: string }>;
+      if (issueIds.length > 0) {
+        db.prepare(
+          `delete from comments where issue_id in (${issueIds.map(() => "?").join(",")})`,
+        ).run(...issueIds.map((row) => row.id));
+      }
+      db.prepare("delete from issues where project_slug = ?").run(slugId);
+      const result = db.prepare("delete from projects where slug_id = ?").run(slugId);
+      return result.changes > 0;
     },
     async createIssue(input: CreateIssueInput) {
+      const project = db.prepare("select slug_id from projects where slug_id = ?").get(
+        input.projectSlug,
+      ) as { slug_id: string } | undefined;
+      if (!project) {
+        throw new Error(`project_not_found: ${input.projectSlug}`);
+      }
       const now = new Date().toISOString();
       const issue: LocalIssue = {
         id: randomUUID(),
         identifier: input.identifier,
         title: input.title,
-        description: null,
+        description: input.description ?? null,
         priority: null,
         state: input.state,
         projectSlug: input.projectSlug,
@@ -66,8 +151,11 @@ export function createSqliteStore(path: string): LocalLinearStore {
         const stateMatches = input.stateNames ? input.stateNames.includes(issue.state) : true;
         return projectMatches && stateMatches;
       });
-      const nodes = filtered.slice(0, input.first);
-      return { nodes, endCursor: null, hasNextPage: filtered.length > nodes.length };
+      const start = parseCursor(input.after);
+      const nodes = filtered.slice(start, start + input.first);
+      const nextOffset = start + nodes.length;
+      const hasNextPage = nextOffset < filtered.length;
+      return { nodes, endCursor: hasNextPage ? String(nextOffset) : null, hasNextPage };
     },
     async getIssuesByIds(ids) {
       if (ids.length === 0) return [];
@@ -85,6 +173,10 @@ export function createSqliteStore(path: string): LocalLinearStore {
       return issue;
     },
     async createComment(issueId, body) {
+      const issue = db.prepare("select id from issues where id = ?").get(issueId) as
+        | { id: string }
+        | undefined;
+      if (!issue) return null;
       const now = new Date().toISOString();
       const comment = { id: randomUUID(), issueId, body, createdAt: now, updatedAt: now };
       db.prepare("insert into comments (id, issue_id, body, created_at, updated_at) values (?, ?, ?, ?, ?)")
@@ -126,6 +218,15 @@ interface SqliteIssueRow {
   updated_at: string;
 }
 
+interface SqliteProjectRow {
+  slug_id: string;
+  name: string;
+  workspace_kind: "local" | "remote";
+  local_path: string | null;
+  remote_url: string | null;
+  base_branch: string | null;
+}
+
 interface SqliteCommentRow {
   id: string;
   issue_id: string;
@@ -149,4 +250,44 @@ function rowToIssue(row: SqliteIssueRow): LocalIssue {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function rowToProject(row: SqliteProjectRow): LocalProject {
+  return {
+    id: `project-${row.slug_id}`,
+    slugId: row.slug_id,
+    name: row.name,
+    workspace: {
+      kind: row.workspace_kind,
+      localPath: row.local_path,
+      remoteUrl: row.remote_url,
+      baseBranch: row.base_branch,
+    },
+  };
+}
+
+function toProjectRow(
+  input: CreateProjectInput | LocalProject,
+): {
+  slugId: string;
+  name: string;
+  workspaceKind: LocalProjectWorkspace["kind"];
+  localPath: string | null;
+  remoteUrl: string | null;
+  baseBranch: string | null;
+} {
+  return {
+    slugId: input.slugId,
+    name: input.name,
+    workspaceKind: input.workspace.kind,
+    localPath: input.workspace.localPath,
+    remoteUrl: input.workspace.remoteUrl,
+    baseBranch: input.workspace.baseBranch,
+  };
+}
+
+function parseCursor(after: string | null | undefined): number {
+  if (!after) return 0;
+  const parsed = Number.parseInt(after, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 }

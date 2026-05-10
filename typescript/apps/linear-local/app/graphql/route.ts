@@ -1,11 +1,11 @@
 import { createLinearGraphqlServer } from "@symphony/linear-schema/server";
 import { getStore } from "../../lib/shared-store";
 
-const store = getStore();
 const token = process.env.LINEAR_LOCAL_TOKEN ?? "local-dev-token";
-const yoga = createLinearGraphqlServer({ store, token, allowUnauthenticatedLocal: true });
 
 async function handle(request: Request): Promise<Response> {
+  const store = await getStore();
+  const yoga = createLinearGraphqlServer({ store, token, allowUnauthenticatedLocal: true });
   return yoga.fetch(request);
 }
 

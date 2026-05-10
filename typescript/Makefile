@@ -1,9 +1,9 @@
 SHELL := /bin/bash
 
-.PHONY: help install dev linear wait-linear symphony stop status logs clean
+.PHONY: help install build-symphony dev linear wait-linear symphony stop status logs clean
 
 ROOT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-WORKFLOW_FILE := $(ROOT_DIR)WORKFLOW.local.md
+WORKFLOW_FILE ?= $(ROOT_DIR)WORKFLOW.local.md
 DEV_DIR := $(ROOT_DIR)tmp/dev
 LINEAR_URL := http://127.0.0.1:3001/
 LINEAR_PID_FILE := $(DEV_DIR)/linear-local.pid
@@ -26,6 +26,9 @@ help:
 
 install:
 	$(PNPM) install
+
+build-symphony:
+	$(PNPM) --filter @symphony/symphony build
 
 dev: linear wait-linear symphony status
 	@echo "Local tracker UI: http://localhost:3001/"
@@ -53,7 +56,7 @@ wait-linear:
 	echo "linear-local did not become ready at $(LINEAR_URL)" >&2; \
 	exit 1
 
-symphony: wait-linear
+symphony: build-symphony wait-linear
 	@mkdir -p "$(DEV_DIR)"
 	@if [ -f "$(SYMPHONY_PID_FILE)" ] && kill -0 "$$(cat "$(SYMPHONY_PID_FILE)")" 2>/dev/null; then \
 		echo "symphony-cli already running (pid $$(cat "$(SYMPHONY_PID_FILE)"))"; \

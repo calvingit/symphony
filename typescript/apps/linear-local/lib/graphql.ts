@@ -29,6 +29,20 @@ export interface KanbanIssue {
   createdAt: string | null;
 }
 
+export interface ProjectWorkspace {
+  kind: "local" | "remote";
+  localPath: string | null;
+  remoteUrl: string | null;
+  baseBranch: string | null;
+}
+
+export interface ProjectRecord {
+  id: string;
+  slugId: string;
+  name: string;
+  workspace: ProjectWorkspace;
+}
+
 export interface RunProgress {
   issueId: string;
   identifier: string;
@@ -45,7 +59,21 @@ export interface RunProgress {
   finishedAt: string | null;
 }
 
-export async function fetchIssues(stateNames: string[]): Promise<KanbanIssue[]> {
+export async function fetchProjects(): Promise<ProjectRecord[]> {
+  const data = await request<{ projects: ProjectRecord[] }>(`
+    query Projects {
+      projects {
+        id
+        slugId
+        name
+        workspace { kind localPath remoteUrl baseBranch }
+      }
+    }
+  `);
+  return data.projects;
+}
+
+export async function fetchIssues(projectSlug: string, stateNames: string[]): Promise<KanbanIssue[]> {
   const data = await request<{
     issues: { nodes: Array<Omit<KanbanIssue, "state"> & { state: { name: string } }> };
   }>(
@@ -58,7 +86,7 @@ export async function fetchIssues(stateNames: string[]): Promise<KanbanIssue[]> 
         }
       }
     }`,
-    { stateNames, projectSlug: "symphony-local" },
+    { stateNames, projectSlug },
   );
   return data.issues.nodes.map((n) => ({ ...n, state: n.state.name }));
 }
@@ -72,28 +100,86 @@ export async function updateIssueState(id: string, stateName: string): Promise<v
   );
 }
 
-export async function createIssue(title: string, state: string): Promise<KanbanIssue | null> {
-  const storeRes = await fetch("/api/issues", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ title, state }),
-  });
-  if (!storeRes.ok) return null;
-  const issue = await storeRes.json();
+export async function createIssue(input: {
+  title: string;
+  description: string;
+  stateName: string;
+  projectSlug: string;
+}): Promise<KanbanIssue | null> {
+  const data = await request<{
+    issueCreate: {
+      success: boolean;
+      issue: (Omit<KanbanIssue, "state"> & { state: { name: string } }) | null;
+    };
+  }>(
+    `mutation CreateIssue($input: IssueCreateInput!) {
+      issueCreate(input: $input) {
+        success
+        issue {
+          id identifier title state { name } priority description branchName url
+          labels { nodes { name } }
+          updatedAt createdAt
+        }
+      }
+    }`,
+    { input },
+  );
+  const issue = data.issueCreate.issue;
+  if (!issue) return null;
+  return { ...issue, state: issue.state.name };
+}
 
-  return {
-    id: issue.id,
-    identifier: issue.identifier,
-    title: issue.title,
-    state: issue.state,
-    priority: issue.priority,
-    description: issue.description,
-    branchName: issue.branchName,
-    url: issue.url,
-    labels: (issue.labels ?? []).map((l: string) => ({ name: l })),
-    updatedAt: issue.updatedAt,
-    createdAt: issue.createdAt,
-  };
+export async function createProject(input: {
+  slugId: string;
+  name: string;
+  workspace: ProjectWorkspace;
+}): Promise<ProjectRecord | null> {
+  const data = await request<{ projectCreate: { success: boolean; project: ProjectRecord | null } }>(
+    `mutation CreateProject($input: ProjectCreateInput!) {
+      projectCreate(input: $input) {
+        success
+        project {
+          id
+          slugId
+          name
+          workspace { kind localPath remoteUrl baseBranch }
+        }
+      }
+    }`,
+    { input },
+  );
+  return data.projectCreate.project;
+}
+
+export async function updateProject(
+  slugId: string,
+  input: { name?: string; workspace?: ProjectWorkspace },
+): Promise<ProjectRecord | null> {
+  const data = await request<{ projectUpdate: { success: boolean; project: ProjectRecord | null } }>(
+    `mutation UpdateProject($slugId: String!, $input: ProjectUpdateInput!) {
+      projectUpdate(slugId: $slugId, input: $input) {
+        success
+        project {
+          id
+          slugId
+          name
+          workspace { kind localPath remoteUrl baseBranch }
+        }
+      }
+    }`,
+    { slugId, input },
+  );
+  return data.projectUpdate.project;
+}
+
+export async function deleteProject(slugId: string): Promise<boolean> {
+  const data = await request<{ projectDelete: { success: boolean } }>(
+    `mutation DeleteProject($slugId: String!) {
+      projectDelete(slugId: $slugId) { success }
+    }`,
+    { slugId },
+  );
+  return Boolean(data.projectDelete.success);
 }
 
 export async function fetchRunProgress(): Promise<RunProgress[]> {

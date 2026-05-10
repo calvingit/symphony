@@ -1,10 +1,18 @@
 export const typeDefs = /* GraphQL */ `
   scalar DateTime
 
+  type ProjectWorkspace {
+    kind: String!
+    localPath: String
+    remoteUrl: String
+    baseBranch: String
+  }
+
   type Project {
     id: ID!
     slugId: String!
     name: String!
+    workspace: ProjectWorkspace!
   }
 
   type WorkflowState {
@@ -90,9 +98,45 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Query {
+    projects: [Project!]!
+    project(slugId: String!): Project
     issues(filter: IssueFilter, first: Int, after: String): IssueConnection!
     issue(id: ID!): Issue
     nodes(ids: [ID!]!): [Issue]!
+  }
+
+  input ProjectWorkspaceInput {
+    kind: String!
+    localPath: String
+    remoteUrl: String
+    baseBranch: String
+  }
+
+  input ProjectCreateInput {
+    slugId: String!
+    name: String!
+    workspace: ProjectWorkspaceInput!
+  }
+
+  input ProjectUpdateInput {
+    name: String
+    workspace: ProjectWorkspaceInput
+  }
+
+  type ProjectPayload {
+    success: Boolean!
+    project: Project
+  }
+
+  type ProjectDeletePayload {
+    success: Boolean!
+  }
+
+  input IssueCreateInput {
+    title: String!
+    description: String
+    stateName: String!
+    projectSlug: String!
   }
 
   input IssueUpdateInput {
@@ -116,6 +160,10 @@ export const typeDefs = /* GraphQL */ `
   }
 
   type Mutation {
+    projectCreate(input: ProjectCreateInput!): ProjectPayload!
+    projectUpdate(slugId: String!, input: ProjectUpdateInput!): ProjectPayload!
+    projectDelete(slugId: String!): ProjectDeletePayload!
+    issueCreate(input: IssueCreateInput!): IssuePayload!
     issueUpdate(id: ID!, input: IssueUpdateInput!): IssuePayload!
     commentCreate(issueId: ID!, body: String!): CommentPayload!
     commentUpdate(id: ID!, body: String!): CommentPayload!

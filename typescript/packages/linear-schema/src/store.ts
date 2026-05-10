@@ -1,5 +1,19 @@
 import { randomUUID } from "node:crypto";
 
+export interface LocalProjectWorkspace {
+  kind: "local" | "remote";
+  localPath: string | null;
+  remoteUrl: string | null;
+  baseBranch: string | null;
+}
+
+export interface LocalProject {
+  id: string;
+  slugId: string;
+  name: string;
+  workspace: LocalProjectWorkspace;
+}
+
 export interface LocalIssue {
   id: string;
   identifier: string;
@@ -18,12 +32,27 @@ export interface LocalIssue {
 export interface CreateIssueInput {
   identifier: string;
   title: string;
+  description?: string | null;
   state: string;
   projectSlug: string;
 }
 
+export interface CreateProjectInput {
+  slugId: string;
+  name: string;
+  workspace: LocalProjectWorkspace;
+}
+
 export interface LocalLinearStore {
   seedDefaultProject(slugId: string): Promise<void>;
+  listProjects(): Promise<LocalProject[]>;
+  getProjectBySlug(slugId: string): Promise<LocalProject | null>;
+  createProject(input: CreateProjectInput): Promise<LocalProject>;
+  updateProject(
+    slugId: string,
+    input: Partial<{ name: string; workspace: LocalProjectWorkspace }>,
+  ): Promise<LocalProject | null>;
+  deleteProject(slugId: string): Promise<boolean>;
   createIssue(input: CreateIssueInput): Promise<LocalIssue>;
   listIssues(input: { projectSlug?: string; stateNames?: string[]; first: number; after?: string | null }): Promise<{ nodes: LocalIssue[]; endCursor: string | null; hasNextPage: boolean }>;
   getIssuesByIds(ids: string[]): Promise<LocalIssue[]>;
@@ -34,22 +63,77 @@ export interface LocalLinearStore {
 }
 
 export function createInMemoryStore(): LocalLinearStore {
-  const projects = new Set<string>();
+  const projects = new Map<string, LocalProject>();
   const issues = new Map<string, LocalIssue>();
   const comments = new Map<string, { id: string; issueId: string; body: string; createdAt: string; updatedAt: string }>();
 
   return {
     async seedDefaultProject(slugId) {
-      projects.add(slugId);
+      if (projects.has(slugId)) return;
+      projects.set(slugId, {
+        id: `project-${slugId}`,
+        slugId,
+        name: slugId,
+        workspace: {
+          kind: "local",
+          localPath: null,
+          remoteUrl: null,
+          baseBranch: "main",
+        },
+      });
+    },
+    async listProjects() {
+      return [...projects.values()].sort((a, b) => a.slugId.localeCompare(b.slugId));
+    },
+    async getProjectBySlug(slugId) {
+      return projects.get(slugId) ?? null;
+    },
+    async createProject(input) {
+      const project: LocalProject = {
+        id: `project-${input.slugId}`,
+        slugId: input.slugId,
+        name: input.name,
+        workspace: { ...input.workspace },
+      };
+      projects.set(project.slugId, project);
+      return project;
+    },
+    async updateProject(slugId, input) {
+      const existing = projects.get(slugId);
+      if (!existing) return null;
+      const updated: LocalProject = {
+        ...existing,
+        name: input.name ?? existing.name,
+        workspace: input.workspace ? { ...input.workspace } : existing.workspace,
+      };
+      projects.set(slugId, updated);
+      return updated;
+    },
+    async deleteProject(slugId) {
+      if (!projects.delete(slugId)) return false;
+      const deletedIssueIds = [...issues.values()]
+        .filter((issue) => issue.projectSlug === slugId)
+        .map((issue) => issue.id);
+      for (const issueId of deletedIssueIds) {
+        issues.delete(issueId);
+      }
+      for (const [commentId, comment] of comments.entries()) {
+        if (deletedIssueIds.includes(comment.issueId)) {
+          comments.delete(commentId);
+        }
+      }
+      return true;
     },
     async createIssue(input) {
-      projects.add(input.projectSlug);
+      if (!projects.has(input.projectSlug)) {
+        throw new Error(`project_not_found: ${input.projectSlug}`);
+      }
       const now = new Date().toISOString();
       const issue: LocalIssue = {
         id: randomUUID(),
         identifier: input.identifier,
         title: input.title,
-        description: null,
+        description: input.description ?? null,
         priority: null,
         state: input.state,
         projectSlug: input.projectSlug,

@@ -19,7 +19,13 @@ export class LinearClient {
       const body = await this.graphql({
         query: `query SymphonyLinearPoll($projectSlug: String!, $stateNames: [String!]!, $first: Int!, $after: String) {
         issues(filter: { project: { slugId: { eq: $projectSlug } }, state: { name: { in: $stateNames } } }, first: $first, after: $after) {
-          nodes { id identifier title description priority branchName url createdAt updatedAt state { name } labels { nodes { name } } relations { nodes { type relatedIssue { id identifier state { name } } } } }
+          nodes {
+            id identifier title description priority branchName url createdAt updatedAt
+            state { name }
+            project { slugId name workspace { kind localPath remoteUrl baseBranch } }
+            labels { nodes { name } }
+            relations { nodes { type relatedIssue { id identifier state { name } } } }
+          }
           pageInfo { hasNextPage endCursor }
         }
       }`,
@@ -59,7 +65,13 @@ export class LinearClient {
     if (ids.length === 0) return new Map();
     const body = await this.graphql({
       query: `query Nodes($ids: [ID!]!) {
-        nodes(ids: $ids) { id identifier title description priority branchName url createdAt updatedAt state { name } labels { nodes { name } } relations { nodes { type relatedIssue { id identifier state { name } } } } }
+        nodes(ids: $ids) {
+          id identifier title description priority branchName url createdAt updatedAt
+          state { name }
+          project { slugId name workspace { kind localPath remoteUrl baseBranch } }
+          labels { nodes { name } }
+          relations { nodes { type relatedIssue { id identifier state { name } } } }
+        }
       }`,
       variables: { ids },
     });
@@ -104,6 +116,22 @@ function normalizeIssue(node: any): Issue {
     url: typeof node.url === "string" ? node.url : null,
     labels: Array.isArray(node.labels?.nodes) ? node.labels.nodes.map((label: any) => String(label.name).toLowerCase()) : [],
     blockedBy: [],
+    project:
+      node.project && typeof node.project.slugId === "string"
+        ? {
+            slugId: node.project.slugId,
+            name: typeof node.project.name === "string" ? node.project.name : node.project.slugId,
+            workspace: {
+              kind: node.project.workspace?.kind === "remote" ? "remote" : "local",
+              localPath:
+                typeof node.project.workspace?.localPath === "string" ? node.project.workspace.localPath : null,
+              remoteUrl:
+                typeof node.project.workspace?.remoteUrl === "string" ? node.project.workspace.remoteUrl : null,
+              baseBranch:
+                typeof node.project.workspace?.baseBranch === "string" ? node.project.workspace.baseBranch : null,
+            },
+          }
+        : null,
     createdAt: typeof node.createdAt === "string" ? node.createdAt : null,
     updatedAt: typeof node.updatedAt === "string" ? node.updatedAt : null,
   };

@@ -12,4 +12,17 @@ describe("runHook", () => {
     expect(result.ok).toBe(true);
     await expect(readFile(join(cwd, "hook.txt"), "utf8")).resolves.toBe("ok");
   });
+
+  it("passes explicit environment variables to hook scripts", async () => {
+    const cwd = await mkdtemp(join(tmpdir(), "symphony-hook-env-"));
+    const result = await runHook({
+      script: 'printf "%s" "$SYMPHONY_ISSUE_IDENTIFIER" > issue.txt',
+      cwd,
+      timeoutMs: 1000,
+      env: { SYMPHONY_ISSUE_IDENTIFIER: "LOC-42" },
+    });
+
+    expect(result.ok).toBe(true);
+    await expect(readFile(join(cwd, "issue.txt"), "utf8")).resolves.toBe("LOC-42");
+  });
 });
