@@ -2,6 +2,15 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 import { getDynamicToolSpecs } from './dynamic-tools.js';
 
+const OPTED_OUT_NOTIFICATION_METHODS = [
+  'item/agentMessage/delta',
+  'item/reasoning/summaryTextDelta',
+  'item/reasoning/summaryPartAdded',
+  'item/reasoning/textDelta',
+  'item/commandExecution/outputDelta',
+  'item/fileChange/outputDelta',
+] as const;
+
 export interface AppServerTurnResult {
   threadId: string | null;
   turnId: string | null;
@@ -150,6 +159,7 @@ export function runAppServerTurn(input: {
           },
           capabilities: {
             experimentalApi: true,
+            optOutNotificationMethods: [...OPTED_OUT_NOTIFICATION_METHODS],
           },
         });
         sendNotification('initialized', {});

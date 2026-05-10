@@ -33,8 +33,11 @@ while IFS= read -r line; do
       printf '%s\n' '{"id":2,"result":{"turn":{"id":"turn-10","status":"inProgress"}}}'
       printf '%s\n' '{"method":"thread/started","params":{"thread":{"id":"thread-10"}}}'
       printf '%s\n' '{"method":"turn/started","params":{"threadId":"thread-10","turn":{"id":"turn-10","status":"inProgress"}}}'
+      printf '%s\n' '{"method":"turn/plan/updated","params":{"threadId":"thread-10","turnId":"turn-10","plan":[{"step":"Inspect failing tests","status":"completed"},{"step":"Fix snapshot drift","status":"inProgress"}]}}'
+      printf '%s\n' '{"method":"turn/diff/updated","params":{"threadId":"thread-10","turnId":"turn-10","diff":"diff --git a/file.txt b/file.txt"}}'
       printf '%s\n' '{"method":"item/started","params":{"threadId":"thread-10","turnId":"turn-10","item":{"id":"item-1","type":"commandExecution","command":"pnpm test","cwd":"/tmp/workspace","status":"inProgress"}}}'
       printf '%s\n' '{"method":"item/commandExecution/outputDelta","params":{"threadId":"thread-10","turnId":"turn-10","itemId":"item-1","delta":"running tests"}}'
+      printf '%s\n' '{"method":"item/agentMessage/delta","params":{"threadId":"thread-10","turnId":"turn-10","itemId":"msg-1","delta":"Working..."}}'
       printf '%s\n' '{"method":"item/completed","params":{"threadId":"thread-10","turnId":"turn-10","item":{"id":"item-1","type":"commandExecution","command":"pnpm test","cwd":"/tmp/workspace","status":"completed","exitCode":0,"durationMs":25}}}'
       printf '%s\n' '{"method":"turn/completed","params":{"threadId":"thread-10","turn":{"id":"turn-10","status":"completed"}}}'
       exit 0
@@ -67,10 +70,38 @@ done
       expect.arrayContaining([
         ['running_codex', 'codex.thread.started'],
         ['running_codex', 'codex.turn.started'],
+        ['running_codex', 'codex.plan.updated'],
+        ['running_codex', 'codex.diff.updated'],
         ['tool_call', 'codex.command.started'],
-        ['tool_call', 'codex.command.output'],
         ['running_codex', 'codex.command.completed'],
         ['completed', 'codex.turn.completed'],
+      ]),
+    );
+    expect(snapshot.events.map((event) => event.eventName)).not.toContain('codex.command.output');
+    expect(snapshot.events.map((event) => event.eventName)).not.toContain(
+      'codex.agent_message.delta',
+    );
+    expect(snapshot.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventName: 'codex.plan.updated',
+          message: 'Plan updated (2 steps).',
+          details: expect.objectContaining({
+            plan: [
+              { step: 'Inspect failing tests', status: 'completed' },
+              { step: 'Fix snapshot drift', status: 'inProgress' },
+            ],
+          }),
+        }),
+        expect.objectContaining({
+          eventName: 'codex.command.completed',
+          message: 'Command finished with exit 0 in 25ms.',
+          details: expect.objectContaining({
+            command: 'pnpm test',
+            exitCode: 0,
+            durationMs: 25,
+          }),
+        }),
       ]),
     );
   });
@@ -127,6 +158,17 @@ done
     );
     expect(snapshot.events.map((event) => event.eventName)).toEqual(
       expect.arrayContaining(['codex.error', 'codex.turn.failed']),
+    );
+    expect(snapshot.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventName: 'codex.error',
+          message: 'InternalServerError: model exploded',
+          details: expect.objectContaining({
+            codexErrorInfo: { type: 'InternalServerError' },
+          }),
+        }),
+      ]),
     );
   });
 

@@ -46,6 +46,17 @@ done
       'thread/start',
       'turn/start',
     ]);
+    expect(messages[0]?.params?.capabilities).toEqual({
+      experimentalApi: true,
+      optOutNotificationMethods: [
+        'item/agentMessage/delta',
+        'item/reasoning/summaryTextDelta',
+        'item/reasoning/summaryPartAdded',
+        'item/reasoning/textDelta',
+        'item/commandExecution/outputDelta',
+        'item/fileChange/outputDelta',
+      ],
+    });
     expect(messages[2]?.params?.approvalPolicy).toBe('never');
     expect(messages[2]?.params?.sandbox).toBe('danger-full-access');
     expect(messages[3]?.params?.approvalPolicy).toBe('never');

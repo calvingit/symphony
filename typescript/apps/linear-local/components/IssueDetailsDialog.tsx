@@ -13,11 +13,10 @@ import {
 import { issuePriorityLabel, type IssuePriority } from "@symphony/core";
 import type {
   IssueDetails,
-  IssueRelation,
   IssueRelationIssueRef,
   RunProgress,
   RunProgressEvent,
-} from "../lib/graphql";
+} from '../lib/graphql';
 
 interface IssueDetailsDialogProps {
   issueId: string | null;
@@ -31,12 +30,12 @@ interface IssueDetailsDialogProps {
 
 export function IssueDetailsDialog(props: IssueDetailsDialogProps) {
   const [showAllLabels, setShowAllLabels] = useState(false);
-  const [showEvents, setShowEvents] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setShowAllLabels(false);
-    setShowEvents(false);
+    setShowDiagnostics(false);
     setCopied(false);
   }, [props.issueId]);
 
@@ -54,29 +53,29 @@ export function IssueDetailsDialog(props: IssueDetailsDialogProps) {
   if (!props.issueId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/25 px-4 py-10">
-      <div className="fixed inset-0" onClick={props.onClose} />
-      <div className="relative z-10 flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
-        <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
-                {props.issue?.identifier ?? "Loading"}
+    <div className='fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/25 px-4 py-10'>
+      <div className='fixed inset-0' onClick={props.onClose} />
+      <div className='relative z-10 flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl'>
+        <div className='flex items-start justify-between border-b border-gray-200 px-5 py-4'>
+          <div className='min-w-0'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-600'>
+                {props.issue?.identifier ?? 'Loading'}
               </span>
               {props.issue && <StateBadge state={props.issue.state} />}
               {props.run && (
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700">
+                <span className='rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700'>
                   {formatRunStatus(props.run.status)}
                 </span>
               )}
             </div>
-            <h2 className="mt-2 text-lg font-semibold text-gray-900">
-              {props.issue?.title ?? "Loading issue details..."}
+            <h2 className='mt-2 text-lg font-semibold text-gray-900'>
+              {props.issue?.title ?? 'Loading issue details...'}
             </h2>
             {props.issue && (
-              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+              <div className='mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => {
                     if (!props.issue) return;
                     if (!navigator.clipboard) return;
@@ -84,19 +83,17 @@ export function IssueDetailsDialog(props: IssueDetailsDialogProps) {
                       setCopied(true);
                     });
                   }}
-                  className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-700"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  {copied ? "Copied identifier" : "Copy identifier"}
+                  className='inline-flex items-center gap-1 text-gray-500 hover:text-gray-700'>
+                  <Copy className='h-3.5 w-3.5' />
+                  {copied ? 'Copied identifier' : 'Copy identifier'}
                 </button>
                 {props.issue.url && (
                   <a
                     href={props.issue.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-700"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
+                    target='_blank'
+                    rel='noreferrer'
+                    className='inline-flex items-center gap-1 text-gray-500 hover:text-gray-700'>
+                    <ExternalLink className='h-3.5 w-3.5' />
                     Open issue link
                   </a>
                 )}
@@ -104,48 +101,47 @@ export function IssueDetailsDialog(props: IssueDetailsDialogProps) {
             )}
           </div>
           <button
-            type="button"
+            type='button'
             onClick={props.onClose}
-            className="rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          >
-            <X className="h-4 w-4" />
+            className='rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600'>
+            <X className='h-4 w-4' />
           </button>
         </div>
 
-        <div className="max-h-[80vh] overflow-y-auto px-5 py-4">
+        <div className='max-h-[80vh] overflow-y-auto px-5 py-4'>
           {props.isLoading && !props.issue ? (
-            <StatusPanel title="Loading issue details" tone="neutral">
+            <StatusPanel title='Loading issue details' tone='neutral'>
               Fetching project, comments, blockers, and run context...
             </StatusPanel>
           ) : props.error ? (
-            <StatusPanel title="Failed to load issue details" tone="error">
+            <StatusPanel title='Failed to load issue details' tone='error'>
               {props.error}
             </StatusPanel>
           ) : !props.issue ? (
-            <StatusPanel title="Issue not found" tone="error">
+            <StatusPanel title='Issue not found' tone='error'>
               The selected issue is no longer available.
             </StatusPanel>
           ) : (
-            <div className="space-y-6">
-              <section className="flex flex-col gap-6">
-                <CardSection title="Labels">
+            <div className='space-y-6'>
+              <section className='flex flex-col gap-6'>
+                <CardSection title='Labels'>
                   {props.issue.labels.length > 0 ? (
                     <>
-                      <div className="flex flex-wrap gap-2">
-                        {(showAllLabels ? props.issue.labels : props.issue.labels.slice(0, MAX_VISIBLE_LABELS)).map(
-                          (label) => (
-                            <LabelChip key={label.name} name={label.name} />
-                          ),
-                        )}
+                      <div className='flex flex-wrap gap-2'>
+                        {(showAllLabels
+                          ? props.issue.labels
+                          : props.issue.labels.slice(0, MAX_VISIBLE_LABELS)
+                        ).map((label) => (
+                          <LabelChip key={label.name} name={label.name} />
+                        ))}
                       </div>
                       {props.issue.labels.length > MAX_VISIBLE_LABELS && (
                         <button
-                          type="button"
+                          type='button'
                           onClick={() => setShowAllLabels((value) => !value)}
-                          className="mt-3 text-xs font-medium text-blue-600 hover:text-blue-700"
-                        >
+                          className='mt-3 text-xs font-medium text-blue-600 hover:text-blue-700'>
                           {showAllLabels
-                            ? "Collapse labels"
+                            ? 'Collapse labels'
                             : `Show all ${props.issue.labels.length} labels`}
                         </button>
                       )}
@@ -155,81 +151,82 @@ export function IssueDetailsDialog(props: IssueDetailsDialogProps) {
                   )}
                 </CardSection>
 
-                <CardSection title="Execution Context">
-                  <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-                    <DetailRow label="Project">
-                      <div className="space-y-1">
-                        <div className="font-medium text-gray-800">
-                          {props.issue.project?.name ?? "Unknown project"}
+                <CardSection title='Execution Context'>
+                  <div className='grid gap-x-6 gap-y-3 sm:grid-cols-2'>
+                    <DetailRow label='Project'>
+                      <div className='space-y-1'>
+                        <div className='font-medium text-gray-800'>
+                          {props.issue.project?.name ?? 'Unknown project'}
                         </div>
                         {props.issue.project?.slugId && (
-                          <div className="text-xs text-gray-500">
+                          <div className='text-xs text-gray-500'>
                             slug: {props.issue.project.slugId}
                           </div>
                         )}
                       </div>
                     </DetailRow>
-                    <DetailRow label="Priority">
+                    <DetailRow label='Priority'>
                       <PriorityTag priority={props.issue.priority} />
                     </DetailRow>
-                    <DetailRow label="Issue ID">
+                    <DetailRow label='Issue ID'>
                       <CodeText value={props.issue.id} />
                     </DetailRow>
-                    <DetailRow label="Branch">
-                      <CodeText value={props.issue.branchName ?? "Not set"} />
+                    <DetailRow label='Branch'>
+                      <CodeText value={props.issue.branchName ?? 'Not set'} />
                     </DetailRow>
-                    <DetailRow label="Workspace">
+                    <DetailRow label='Workspace'>
                       <CodeText
                         value={
                           props.issue.project
                             ? formatWorkspaceSummary(props.issue.project)
-                            : "Unknown"
+                            : 'Unknown'
                         }
                       />
                     </DetailRow>
-                    <DetailRow label="Base branch">
-                      <CodeText value={props.issue.project?.workspace.baseBranch ?? "Not set"} />
+                    <DetailRow label='Base branch'>
+                      <CodeText value={props.issue.project?.workspace.baseBranch ?? 'Not set'} />
                     </DetailRow>
-                    <DetailRow label="Created">
-                      <span className="text-sm text-gray-700">{formatDate(props.issue.createdAt)}</span>
+                    <DetailRow label='Created'>
+                      <span className='text-sm text-gray-700'>
+                        {formatDate(props.issue.createdAt)}
+                      </span>
                     </DetailRow>
-                    <DetailRow label="Updated">
-                      <span className="text-sm text-gray-700">{formatDate(props.issue.updatedAt)}</span>
+                    <DetailRow label='Updated'>
+                      <span className='text-sm text-gray-700'>
+                        {formatDate(props.issue.updatedAt)}
+                      </span>
                     </DetailRow>
                   </div>
                 </CardSection>
               </section>
 
-              <CardSection title="Latest Run">
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
-                      {props.run ? formatRunStatus(props.run.status) : "No recent run"}
+              <CardSection title='Latest Run'>
+                <div className='space-y-4'>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    <span className='rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700'>
+                      {props.run ? formatRunStatus(props.run.status) : 'No recent run'}
                     </span>
                     {runSnapshot.attempt !== null && (
-                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
+                      <span className='rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600'>
                         Attempt #{runSnapshot.attempt + 1}
                       </span>
                     )}
                     {runSnapshot.lastUpdated && (
-                      <span className="text-xs text-gray-500">
+                      <span className='text-xs text-gray-500'>
                         Updated {formatDate(runSnapshot.lastUpdated)}
                       </span>
                     )}
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-5">
+                  <div className='grid gap-3 md:grid-cols-5'>
                     {runSnapshot.stages.map((stage) => (
-                      <div
-                        key={stage.key}
-                        className={stageClassName(stage.tone)}
-                      >
-                        <div className="text-[11px] font-semibold uppercase tracking-wide">
+                      <div key={stage.key} className={stageClassName(stage.tone)}>
+                        <div className='text-[11px] font-semibold uppercase tracking-wide'>
                           {stage.label}
                         </div>
-                        <div className="mt-1 text-sm font-medium">{stage.value}</div>
+                        <div className='mt-1 text-sm font-medium'>{stage.value}</div>
                         {stage.timestamp && (
-                          <div className="mt-1 text-[11px] text-gray-500">
+                          <div className='mt-1 text-[11px] text-gray-500'>
                             {formatDate(stage.timestamp)}
                           </div>
                         )}
@@ -238,99 +235,110 @@ export function IssueDetailsDialog(props: IssueDetailsDialogProps) {
                   </div>
 
                   {runSnapshot.lastError ? (
-                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <div className='rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700'>
+                      <div className='flex items-start gap-2'>
+                        <AlertTriangle className='mt-0.5 h-4 w-4 flex-shrink-0' />
                         <div>
-                          <div className="font-medium">Last error</div>
-                          <div className="mt-1 whitespace-pre-wrap">{runSnapshot.lastError}</div>
+                          <div className='font-medium'>Last error</div>
+                          <div className='mt-1 whitespace-pre-wrap'>{runSnapshot.lastError}</div>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-700">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4" />
+                    <div className='rounded-lg border border-green-200 bg-green-50 px-3 py-3 text-sm text-green-700'>
+                      <div className='flex items-center gap-2'>
+                        <CheckCircle2 className='h-4 w-4' />
                         <span>No recent run errors</span>
                       </div>
                     </div>
                   )}
 
-                  {runSnapshot.events.length > 0 ? (
+                  {runSnapshot.milestones.length > 0 ? (
+                    <EventSection title='Run Milestones'>
+                      {runSnapshot.milestones.map((event) => (
+                        <RunEventCard key={event.id} event={event} />
+                      ))}
+                    </EventSection>
+                  ) : (
+                    <EmptyText>No milestone events yet</EmptyText>
+                  )}
+
+                  <EventSection title='Plan'>
+                    {runSnapshot.planEvent ? (
+                      <div className='space-y-3'>
+                        <RunEventCard event={runSnapshot.planEvent} />
+                        <PlanStepList event={runSnapshot.planEvent} />
+                      </div>
+                    ) : (
+                      <EmptyText>No plan updates yet</EmptyText>
+                    )}
+                  </EventSection>
+
+                  <EventSection title='Commands &amp; Tools'>
+                    {runSnapshot.commandEvents.length > 0 ? (
+                      runSnapshot.commandEvents.map((event) => (
+                        <RunEventCard key={event.id} event={event} />
+                      ))
+                    ) : (
+                      <EmptyText>No command or tool activity yet</EmptyText>
+                    )}
+                  </EventSection>
+
+                  {runSnapshot.diagnosticEvents.length > 0 ? (
                     <>
                       <button
-                        type="button"
-                        onClick={() => setShowEvents((value) => !value)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
-                      >
-                        {showEvents ? (
-                          <ChevronUp className="h-3.5 w-3.5" />
+                        type='button'
+                        onClick={() => setShowDiagnostics((value) => !value)}
+                        className='inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700'>
+                        {showDiagnostics ? (
+                          <ChevronUp className='h-3.5 w-3.5' />
                         ) : (
-                          <ChevronDown className="h-3.5 w-3.5" />
+                          <ChevronDown className='h-3.5 w-3.5' />
                         )}
-                        {showEvents ? "Hide raw events" : `Show ${runSnapshot.events.length} raw events`}
+                        {showDiagnostics
+                          ? 'Hide diagnostics'
+                          : `Show ${runSnapshot.diagnosticEvents.length} diagnostic events`}
                       </button>
-                      {showEvents && (
-                        <div className="space-y-2">
-                          {runSnapshot.events.map((event) => (
-                            <div
-                              key={event.id}
-                              className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3"
-                            >
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                                <span>{formatDate(event.createdAt)}</span>
-                                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-gray-600">
-                                  {formatRunStatus(event.status)}
-                                </span>
-                                {event.eventName && (
-                                  <CodeText value={formatEventName(event.eventName)} />
-                                )}
-                                {event.toolName && <CodeText value={event.toolName} />}
-                              </div>
-                              {event.message && (
-                                <div className="mt-2 text-sm text-gray-700">{event.message}</div>
-                              )}
-                              {event.error && (
-                                <div className="mt-2 text-sm text-red-600">{event.error}</div>
-                              )}
-                            </div>
+                      {showDiagnostics && (
+                        <EventSection title='Diagnostics'>
+                          {runSnapshot.diagnosticEvents.map((event) => (
+                            <RunEventCard key={event.id} event={event} showDetails />
                           ))}
-                        </div>
+                        </EventSection>
                       )}
                     </>
                   ) : (
-                    <EmptyText>No run events yet</EmptyText>
+                    <EmptyText>No diagnostic events</EmptyText>
                   )}
                 </div>
               </CardSection>
 
-              <section className="grid gap-6 lg:grid-cols-2">
-                <CardSection title="Blocked By">
+              <section className='grid gap-6 lg:grid-cols-2'>
+                <CardSection title='Blocked By'>
                   <RelationList
                     items={blockedByIssues(props.issue)}
-                    emptyText="No active blockers recorded"
+                    emptyText='No active blockers recorded'
                   />
                 </CardSection>
-                <CardSection title="Blocks">
+                <CardSection title='Blocks'>
                   <RelationList
                     items={blockingIssues(props.issue)}
-                    emptyText="This issue is not blocking anything"
+                    emptyText='This issue is not blocking anything'
                   />
                 </CardSection>
               </section>
 
-              <CardSection title="Comments">
+              <CardSection title='Comments'>
                 {props.issue.comments.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className='space-y-3'>
                     {props.issue.comments.map((comment) => (
                       <div
                         key={comment.id}
-                        className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3"
-                      >
-                        <div className="text-[11px] uppercase tracking-wide text-gray-500">
+                        className='rounded-lg border border-gray-200 bg-gray-50 px-3 py-3'>
+                        <div className='text-[11px] uppercase tracking-wide text-gray-500'>
                           {formatDate(comment.updatedAt)}
                         </div>
-                        <div className="mt-2 whitespace-pre-wrap text-sm text-gray-700">
+                        <div className='mt-2 whitespace-pre-wrap text-sm text-gray-700'>
                           {comment.body}
                         </div>
                       </div>
@@ -341,7 +349,7 @@ export function IssueDetailsDialog(props: IssueDetailsDialogProps) {
                 )}
               </CardSection>
 
-              <CardSection title="Description">
+              <CardSection title='Description'>
                 <DescriptionBody text={props.issue.description} />
               </CardSection>
             </div>
@@ -372,6 +380,17 @@ function StatusPanel(props: { title: string; tone: "neutral" | "error"; children
     <div className={`rounded-xl border px-4 py-4 ${toneClassName}`}>
       <div className="font-medium">{props.title}</div>
       <div className="mt-1 text-sm">{props.children}</div>
+    </div>
+  );
+}
+
+function EventSection(props: { title: string; children: ReactNode }) {
+  return (
+    <div className='space-y-2'>
+      <div className='text-[11px] font-semibold uppercase tracking-wide text-gray-500'>
+        {props.title}
+      </div>
+      <div className='space-y-2'>{props.children}</div>
     </div>
   );
 }
@@ -423,6 +442,52 @@ function CodeText(props: { value: string }) {
 
 function EmptyText(props: { children: ReactNode }) {
   return <div className="text-sm text-gray-500">{props.children}</div>;
+}
+
+function RunEventCard(props: { event: RunProgressEvent; showDetails?: boolean }) {
+  return (
+    <div className='rounded-lg border border-gray-200 bg-gray-50 px-3 py-3'>
+      <div className='flex flex-wrap items-center gap-2 text-xs text-gray-500'>
+        <span>{formatDate(props.event.createdAt)}</span>
+        <span className='rounded-full bg-white px-2 py-0.5 text-[11px] text-gray-600'>
+          {formatRunStatus(props.event.status)}
+        </span>
+        {props.event.eventName && <CodeText value={formatEventName(props.event.eventName)} />}
+        {props.event.toolName && <CodeText value={props.event.toolName} />}
+      </div>
+      <div className='mt-2 text-sm text-gray-800'>{eventSummaryText(props.event)}</div>
+      {props.event.error && <div className='mt-2 text-sm text-red-600'>{props.event.error}</div>}
+      {props.showDetails && props.event.details && (
+        <pre className='mt-3 overflow-x-auto rounded-md bg-gray-950 px-3 py-3 text-xs text-gray-100'>
+          {JSON.stringify(props.event.details, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function PlanStepList(props: { event: RunProgressEvent }) {
+  const steps = readPlanSteps(props.event.details);
+  if (steps.length === 0) {
+    return <EmptyText>No plan steps available</EmptyText>;
+  }
+
+  return (
+    <div className='space-y-2'>
+      {steps.map((step, index) => (
+        <div
+          key={`${step.step}-${index}`}
+          className='rounded-lg border border-gray-200 bg-gray-50 px-3 py-3'>
+          <div className='flex flex-wrap items-center justify-between gap-2'>
+            <div className='text-sm text-gray-800'>{step.step}</div>
+            <span className='rounded-full bg-white px-2 py-0.5 text-[11px] uppercase tracking-wide text-gray-600'>
+              {formatPlanStatus(step.status)}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function RelationList(props: { items: IssueRelationIssueRef[]; emptyText: string }) {
@@ -577,6 +642,10 @@ function buildRunSnapshot(run: RunProgress | undefined, events: RunProgressEvent
   return {
     attempt: latestAttempt,
     events: attemptEvents,
+    milestones: dedupeRunEvents(attemptEvents.filter(isMilestoneEvent)),
+    planEvent: [...attemptEvents].reverse().find(isPlanEvent) ?? null,
+    commandEvents: dedupeRunEvents(attemptEvents.filter(isCommandEvent)),
+    diagnosticEvents: dedupeRunEvents(attemptEvents.filter(isDiagnosticEvent)),
     stages,
     lastUpdated: run?.updatedAt ?? attemptEvents[attemptEvents.length - 1]?.createdAt ?? null,
     lastError:
@@ -654,6 +723,93 @@ function formatWorkspaceSummary(issueProject: NonNullable<IssueDetails["project"
 
 function formatEventName(eventName: string): string {
   return eventName.replaceAll(".", " ");
+}
+
+function eventSummaryText(event: RunProgressEvent): string {
+  return (
+    event.message ??
+    event.error ??
+    (event.eventName ? formatEventName(event.eventName) : 'Run event')
+  );
+}
+
+function isPlanEvent(event: RunProgressEvent): boolean {
+  return event.eventName === 'codex.plan.updated';
+}
+
+function isCommandEvent(event: RunProgressEvent): boolean {
+  switch (event.eventName) {
+    case 'codex.command.started':
+    case 'codex.command.completed':
+    case 'codex.file_change.started':
+    case 'codex.file_change.completed':
+    case 'codex.tool_call.started':
+    case 'codex.tool_call.completed':
+    case 'codex.dynamic_tool.started':
+    case 'codex.dynamic_tool.completed':
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isDiagnosticEvent(event: RunProgressEvent): boolean {
+  switch (event.eventName) {
+    case 'codex.stderr':
+    case 'codex.invalid_json':
+    case 'codex.approval.unsupported':
+    case 'codex.error':
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isMilestoneEvent(event: RunProgressEvent): boolean {
+  return !isPlanEvent(event) && !isCommandEvent(event) && !isDiagnosticEvent(event);
+}
+
+function dedupeRunEvents(events: RunProgressEvent[]): RunProgressEvent[] {
+  const seen = new Set<string>();
+  return events.filter((event) => {
+    const key = [
+      event.eventName ?? '',
+      event.status,
+      event.turnId ?? '',
+      event.toolName ?? '',
+      event.message ?? '',
+      event.error ?? '',
+    ].join('::');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function readPlanSteps(
+  details: Record<string, unknown> | null,
+): Array<{ step: string; status: string }> {
+  const plan = Array.isArray(details?.plan) ? details.plan : [];
+  return plan.flatMap((item): Array<{ step: string; status: string }> => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return [];
+    }
+    const step = typeof item.step === 'string' ? item.step : null;
+    const status = typeof item.status === 'string' ? item.status : null;
+    if (!step || !status) return [];
+    return [{ step, status }];
+  });
+}
+
+function formatPlanStatus(status: string): string {
+  switch (status) {
+    case 'inProgress':
+      return 'In progress';
+    case 'completed':
+      return 'Completed';
+    default:
+      return 'Pending';
+  }
 }
 
 function formatDate(value: string | null): string {
